@@ -454,15 +454,22 @@ void SlipObject::setDisabled(bool dis)
 vec3 SlipObject::centroid()
 {
 	vec3 sum = empty_vec3();
+	double count = 0;
 
 	for (size_t i = 0; i < _vertices.size(); i++)
 	{
+		if (_vertices[i].pos[0] != _vertices[i].pos[0])
+		{
+			continue;
+		}
+
 		sum.x += _vertices[i].pos[0];
 		sum.y += _vertices[i].pos[1];
 		sum.z += _vertices[i].pos[2];
+		count++;
 	}
 	
-	double scale = 1 / (double)_vertices.size();
+	double scale = 1 / count;
 	vec3_mult(&sum, scale);
 	
 	return sum;
