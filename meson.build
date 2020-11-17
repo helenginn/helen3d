@@ -95,3 +95,5 @@ pkg.generate(libraries : [helen3d],
              filebase : 'helen3d',
              description : 'Library for 3D utilities by Helen')
 
+helen3d_inc = include_directories('libsrc')
+helen3d_dep = declare_dependency(link_with: helen3d, include_directories: helen3d_inc)
