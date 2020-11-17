@@ -63,6 +63,11 @@ public:
 		return _model;
 	}
 	
+	vec3 getCentre()
+	{
+		return _centre;
+	}
+	
 	mat4x4 getProjection()
 	{
 		return _proj;
