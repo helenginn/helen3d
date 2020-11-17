@@ -77,14 +77,12 @@ void SlipGL::addObject(SlipObject *obj, bool active)
 		vec3_add_to_vec3(&_centre, c);
 		vec3_mult(&c, -1);
 		_translation = c;
-		std::cout << "Object centre: " << vec3_desc(c) << std::endl;
 	}
 }
 
 void SlipGL::changeCentre(vec3 c)
 {
 	_centre = c;
-	std::cout << "Centre now: " << vec3_desc(_centre) << std::endl;
 	updateCamera();
 }
 
