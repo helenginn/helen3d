@@ -6,6 +6,8 @@ dep_gl = dependency('gl', required : false)
 
 boost_dep = dependency('boost')
 
+helen3d_scs = false
+
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
 
@@ -15,13 +17,8 @@ hash_script = find_program('get_hash.sh')
 # This will produce the dependency file.
 run_command('get_hash.sh')
 
-gen_src = custom_target('commit-output',
-                        input : ['libsrc/commit.h.pre'],
-                        output : ['commit.h'],
-                        command : [hash_script, '@INPUT@', '@OUTPUT@'],
-                        build_by_default: true,
-                        build_always_stale: true)
-
+if qt5_dep.found() and dep_gl.found()
+helen3d_scs = true
 moc_files = qt5.preprocess(moc_headers : 
 ['libsrc/SlipGL.h',
 'libsrc/Mesh.h',
@@ -31,7 +28,7 @@ moc_files = qt5.preprocess(moc_headers :
 ],
 			moc_extra_arguments: ['-DMAKES_MY_MOC_HEADER_COMPILE'])
 
-helen3d = library('helen3d', gen_src, moc_files,
+helen3d = library('helen3d', moc_files,
 'libsrc/CurveView.cpp',
 'libsrc/Curve.cpp',
 'libsrc/Icosahedron.cpp',
@@ -96,4 +93,6 @@ pkg.generate(libraries : [helen3d],
              description : 'Library for 3D utilities by Helen')
 
 helen3d_inc = include_directories('libsrc')
-helen3d_dep = declare_dependency(link_with: helen3d, include_directories: helen3d_inc)
+helen3d_subdep = declare_dependency(link_with: helen3d, include_directories: helen3d_inc)
+
+endif
