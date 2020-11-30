@@ -65,6 +65,18 @@ SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 	setupCamera();
 }
 
+void SlipGL::pause()
+{
+	_timer->setSingleShot(true);
+}
+
+void SlipGL::restartTimer()
+{
+	_timer->setInterval(50);
+	_timer->setSingleShot(false);
+	_timer->start();
+}
+
 void SlipGL::addObject(SlipObject *obj, bool active)
 {
 	_objects.push_back(obj);

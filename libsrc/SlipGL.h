@@ -78,6 +78,9 @@ public:
 		_objects.clear();
 	}
 	
+	void pause();
+	void restartTimer();
+	
 	void addObject(SlipObject *obj, bool active);
 	void updateProjection(double side = 0.5);
 	void removeObject(SlipObject *obj);
