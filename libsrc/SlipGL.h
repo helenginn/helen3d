@@ -97,6 +97,7 @@ protected:
 	void updateCamera();
 	void setupCamera();
 	void time();
+	bool _paused;
 
 	SlipObject *activeObject()
 	{
