@@ -47,6 +47,11 @@ void SlipObject::addToVertexArray(vec3 add, std::vector<Vertex> *vs)
 
 void SlipObject::addToVertices(vec3 add)
 {
+	if (add.x != add.x || add.y != add.y || add.z != add.z)
+	{
+		return;
+	}
+
 	addToVertexArray(add, &_vertices);
 	addToVertexArray(add, &_unselectedVertices);
 }
