@@ -54,6 +54,7 @@ SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 {
 	setBackground(0, 0, 0, 1);
 	_invertZ = false;
+	_paused = false;
 	_time = 0;
 	_timer = new QTimer();
 	_timer->setInterval(50);
@@ -68,6 +69,7 @@ SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 void SlipGL::pause()
 {
 	_timer->setSingleShot(true);
+	_paused = true;
 }
 
 void SlipGL::restartTimer()
@@ -75,6 +77,7 @@ void SlipGL::restartTimer()
 	_timer->setInterval(50);
 	_timer->setSingleShot(false);
 	_timer->start();
+	_paused = false;
 }
 
 void SlipGL::addObject(SlipObject *obj, bool active)
@@ -192,6 +195,11 @@ void SlipGL::initialisePrograms()
 void SlipGL::paintGL()
 {
 	updateCamera();
+	if (_paused)
+	{
+		return;
+	}
+
 	glClearColor(_r, _g, _b, _a);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	for (unsigned int i = 0; i < _objects.size(); i++)
