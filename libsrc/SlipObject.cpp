@@ -310,6 +310,7 @@ void SlipObject::render(SlipGL *sender)
 
 	if (_disabled)
 	{
+		unlockMutex();
 		return;
 	}
 	
