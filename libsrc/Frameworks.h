@@ -48,7 +48,6 @@ typedef struct
 	GLfloat z;
 } IndexTrio;
 
-class GLObject;
 class Vagabond2GL;
 class Density2GL;
 class Bonds2GL;
@@ -57,7 +56,6 @@ class Multi2GL;
 class Connect2GL;
 class Selected2GL;
 class WarpGL;
-typedef boost::shared_ptr<GLObject> GLObjectPtr;
 typedef boost::shared_ptr<Vagabond2GL> Vagabond2GLPtr;
 typedef boost::shared_ptr<Bonds2GL> Bonds2GLPtr;
 typedef boost::shared_ptr<Atoms2GL> Atoms2GLPtr;

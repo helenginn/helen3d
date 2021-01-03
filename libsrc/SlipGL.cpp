@@ -84,6 +84,8 @@ void SlipGL::addObject(SlipObject *obj, bool active)
 {
 	_objects.push_back(obj);
 	obj->setModel(_model);
+	obj->setProj(_proj);
+	obj->setUnproj(_unproj);
 	obj->reorderIndices();
 	
 	if (active)
@@ -211,6 +213,9 @@ void SlipGL::paintGL()
 			continue;
 		}
 
+		_objects[i]->setModel(_model);
+		_objects[i]->setProj(_proj);
+		_objects[i]->setUnproj(_unproj);
 		_objects[i]->render(this);
 	}
 }
@@ -218,24 +223,27 @@ void SlipGL::paintGL()
 void SlipGL::updateCamera()
 {
 	vec3 centre = _centre;
-	
 	vec3 negCentre = centre;
 	vec3_mult(&negCentre, -1);
 
 	mat4x4 change = make_mat4x4();
-	mat4x4_translate(&change, centre);
-	mat4x4_rotate(&change, _camAlpha, _camBeta, _camGamma);
 	mat4x4_translate(&change, negCentre);
+	mat4x4_rotate(&change, _camAlpha, _camBeta, _camGamma);
+	mat4x4_translate(&change, centre);
 
 	mat4x4 transMat = make_mat4x4();
 	_centre = vec3_add_vec3(_centre, _translation);
 	mat4x4_translate(&transMat, _translation);
 
 	mat4x4 tmp = mat4x4_mult_mat4x4(change, transMat);
-	_model = mat4x4_mult_mat4x4(_model, tmp);
+	_model = mat4x4_mult_mat4x4(tmp, _model);
 
 	_camAlpha = 0; _camBeta = 0; _camGamma = 0;
 	_translation = make_vec3(0, 0, 0);
+	
+	_centre.x = 0;
+	_centre.y = 0;
+	setFocalPoint(negCentre);
 }
 
 
@@ -259,18 +267,35 @@ void SlipGL::setupCamera()
 void SlipGL::updateProjection(double side)
 {
 	zNear = 4;
-	zFar = 100;
+	zFar = 400;
 
 	float aspect = (float)height() / (float)width();
-	aspect = 1;
 	
-	if (_invertZ)
-	{
-		zNear *= -1; 
-		zFar *= -1; 
-		aspect *= -1;
-	}
+	_proj = mat4x4_frustum(-side, side, side * aspect, -side * aspect,
+	                       zNear, zFar);
+	_unproj = mat4x4_unfrustum(-side, side, side * aspect, -side * aspect,
+	                       zNear, zFar);
+}
 
-	_proj = mat4x4_ortho(-side, side, side * aspect, -side * aspect,
-	                     zNear, zFar);
+void SlipGL::resizeGL(int w, int h)
+{
+	updateProjection();
+}
+
+void SlipGL::setFocalPoint(vec3 pos)
+{
+	for (int i = 0; i < _objects.size(); i++)
+	{
+		_objects[i]->setFocalPoint(pos);
+	}
+}
+
+void SlipGL::focusOnPosition(vec3 pos, double dist)
+{
+	vec3 newPos = transformPosByModel(pos);
+	_centre = newPos;
+	vec3_mult(&newPos, -1);
+	newPos.z -= dist;
+
+	_translation = vec3_add_vec3(_translation, newPos);
 }

@@ -68,7 +68,10 @@ SlipObject::SlipObject()
 	_bufferID = 0;
 	_vbo = 0;
 	_uModel = 0;
-	_extra = 0;
+	_extra = false;
+	_focus = empty_vec3();
+	_usesLighting = false;
+	_usesFocalDepth = false;
 	_central = 0;
 	_disabled = 0;
 	_highlighted = 0;
@@ -199,6 +202,19 @@ void SlipObject::bindTextures()
 	*/
 }
 
+void SlipObject::bindOneTexture(Picture &pic)
+{
+	glBindTexture(GL_TEXTURE_2D, _textures[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pic.width, pic.height, 
+	             0, GL_RGBA, GL_UNSIGNED_BYTE, pic.data);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+	checkErrors();
+}
+
 void SlipObject::rebindProgram()
 {
 	glBindBuffer(GL_ARRAY_BUFFER, _bufferID);
@@ -310,12 +326,14 @@ void SlipObject::render(SlipGL *sender)
 	_model = sender->getModel();
 	const char *uniform_name = "model";
 	_uModel = glGetUniformLocation(_program, uniform_name);
-	glUniformMatrix4fv(_uModel, 1, GL_FALSE, &_model.vals[0]);
+	_glModel = mat4x4_transpose(_model);
+	glUniformMatrix4fv(_uModel, 1, GL_FALSE, &_glModel.vals[0]);
 
 	_proj = sender->getProjection();
 	uniform_name = "projection";
 	_uProj = glGetUniformLocation(_program, uniform_name);
-	glUniformMatrix4fv(_uProj, 1, GL_FALSE, &_proj.vals[0]);
+	_glProj = mat4x4_transpose(_proj);
+	glUniformMatrix4fv(_uProj, 1, GL_FALSE, &_glProj.vals[0]);
 
 	float time = sender->getTime();
 	uniform_name = "time";
@@ -821,7 +839,6 @@ void SlipObject::changeMidPoint(double x, double y)
 bool SlipObject::intersectsPolygon(double x, double y, double *z)
 {
 	vec3 target = make_vec3(x, y, 0);
-	bool found = false;
 	
 	for (size_t i = 0; i < _indices.size(); i += 3)
 	{
@@ -1502,4 +1519,14 @@ void SlipObject::changeFragmentShader(std::string f)
 {
 	_fString = f;
 	deletePrograms();
+}
+
+void SlipObject::setFocalPoint(vec3 vec)
+{
+	if (!_usesFocalDepth)
+	{
+		return;
+	}
+	
+	_focus = vec;
 }

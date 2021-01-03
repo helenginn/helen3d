@@ -38,6 +38,7 @@ public:
 	void preparePanels(int n);
 	void addPanel();
 	
+	void focusOnPosition(vec3 pos, double dist = 13);   
 	void panned(double x, double y);
 	void draggedLeftMouse(double x, double y);
 	void draggedRightMouse(double x, double y);
@@ -72,6 +73,12 @@ public:
 	{
 		return _proj;
 	}
+
+	vec3 transformPosByModel(vec3 pos)
+	{
+		vec3 newPos = mat4x4_mult_vec(_model, pos);
+		return newPos;
+	}
 	
 	void clearObjects()
 	{
@@ -91,6 +98,8 @@ public slots:
 protected:
 	virtual void initializeGL();
 	virtual void paintGL();
+	virtual void resizeGL(int w, int h);
+	virtual void setFocalPoint(vec3 pos);
 
 	void initialisePrograms();
 	void zoom(float x, float y, float z);
@@ -117,6 +126,7 @@ protected:
 
 	mat4x4 _model;
 	mat4x4 _proj;
+	mat4x4 _unproj;
 	std::vector<SlipObject *> _objects;
 	
 	SlipObject *_activeObj;

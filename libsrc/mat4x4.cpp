@@ -39,9 +39,9 @@ vec3 mat4x4_mult_vec(struct mat4x4 mat, struct vec3 vec)
 {
 	struct vec3 v;
 
-	v.x = mat.vals[0] * vec.x + mat.vals[4] * vec.y + mat.vals[8] * vec.z + mat.vals[12];
-	v.y = mat.vals[1] * vec.x + mat.vals[5] * vec.y + mat.vals[9] * vec.z + mat.vals[13];
-	v.z = mat.vals[2] * vec.x + mat.vals[6] * vec.y + mat.vals[10] * vec.z + mat.vals[14];
+	v.x = mat.vals[0] * vec.x + mat.vals[1] * vec.y + mat.vals[2] * vec.z + mat.vals[3];
+	v.y = mat.vals[4] * vec.x + mat.vals[5] * vec.y + mat.vals[6] * vec.z + mat.vals[7];
+	v.z = mat.vals[8] * vec.x + mat.vals[9] * vec.y + mat.vals[10] * vec.z + mat.vals[11];
 
 	return v;
 }
@@ -50,12 +50,12 @@ vec3 mat4x4_mult_vec3(struct mat4x4 mat, struct vec3 vec, double *last)
 {
 	struct vec3 v;
 
-	v.x = mat.vals[0] * vec.x + mat.vals[4] * vec.y + mat.vals[8] * vec.z + mat.vals[12] * *last;
-	v.y = mat.vals[1] * vec.x + mat.vals[5] * vec.y + mat.vals[9] * vec.z + mat.vals[13] * *last;
-	v.z = mat.vals[2] * vec.x + mat.vals[6] * vec.y + mat.vals[10] * vec.z + mat.vals[14] * *last;
+	v.x = mat.vals[0] * vec.x + mat.vals[1] * vec.y + mat.vals[2] * vec.z + mat.vals[3];
+	v.y = mat.vals[4] * vec.x + mat.vals[5] * vec.y + mat.vals[6] * vec.z + mat.vals[7];
+	v.z = mat.vals[8] * vec.x + mat.vals[9] * vec.y + mat.vals[10] * vec.z + mat.vals[11];
 	
-	*last = mat.vals[3] * vec.x + mat.vals[7] * vec.y
-	+ mat.vals[11] * vec.z + mat.vals[15] * *last;
+	*last = mat.vals[12] * vec.x + mat.vals[13] * vec.y
+	+ mat.vals[14] * vec.z + mat.vals[15] * *last;
 	
 	return v;
 }
@@ -87,6 +87,24 @@ mat4x4 mat4x4_frustum(float left, float right, float top,
 	mat.vals[10] = - (far + near) / (far - near);
 	mat.vals[11] = - 2 * far * near / (far - near);
 	mat.vals[14] = -1;
+	mat.vals[15] = 0;
+	
+	return mat;
+}
+
+mat4x4 mat4x4_unfrustum(float left, float right, float top,
+                      float bottom, float near, float far)
+{
+	mat4x4 mat = make_mat4x4();
+
+	mat.vals[0] = -(left - right) / (near * 2);
+	mat.vals[3] = (left + right) / (near * 2);
+	mat.vals[5] = (top - bottom) / (near * 2);
+	mat.vals[7] = (top + bottom) / (near * 2);
+	mat.vals[10] = 0;
+	mat.vals[11] = -1;
+	mat.vals[14] = (near - far) / (2 * far * near);
+	mat.vals[15] = (far + near) / (2 * far * near);
 	
 	return mat;
 }
@@ -105,6 +123,23 @@ mat4x4 mat4x4_ortho(float left, float right, float top,
 	mat.vals[15] = 1;
 
 	return mat;
+}
+
+mat4x4 mat4x4_unortho(float left, float right, float top,
+                    float bottom, float near, float far)
+{
+	mat4x4 mat = make_mat4x4();
+
+	mat.vals[0] = (right - left) / 2;
+	mat.vals[3] = (left + right) / 2;
+	mat.vals[5] = (top - bottom) / 2;
+	mat.vals[7] = (top + bottom) / 2;
+	mat.vals[10] = (far - near) / -2;
+	mat.vals[11] = -(far + near) / 2;
+	mat.vals[15] = 1;
+
+	return mat;
+	
 }
 
 mat4x4 mat4x4_mult_mat4x4(mat4x4 l, mat4x4 r)
@@ -173,7 +208,7 @@ mat4x4 mat4x4_from_rot_trans(mat3x3 rot, vec3 trans)
 	mat4x4 trans4 = make_mat4x4();
 	mat4x4_translate(&trans4, trans);
 
-	return mat4x4_mult_mat4x4(trans4, rot4);
+	return mat4x4_mult_mat4x4(rot4, trans4);
 }
 
 mat3x3 mat4x4_get_rot(mat4x4 &mat)
@@ -220,9 +255,9 @@ mat4x4 mat4x4_transpose(mat4x4 m)
 void mat4x4_translate(mat4x4 *mat, vec3 centre)
 {
 	mat4x4 transMat = make_mat4x4();
-	transMat.vals[12] = centre.x;
-	transMat.vals[13] = centre.y;
-	transMat.vals[14] = centre.z;
+	transMat.vals[3] = centre.x;
+	transMat.vals[7] = centre.y;
+	transMat.vals[11] = centre.z;
 
 	mat4x4 mult = mat4x4_mult_mat4x4(transMat, *mat);
 	*mat = mult;
@@ -230,8 +265,8 @@ void mat4x4_translate(mat4x4 *mat, vec3 centre)
 
 mat4x4 mat4x4_inverse(mat4x4 &mat)
 {
-	vec3 trans = make_vec3(mat.vals[12], mat.vals[13],
-	                        mat.vals[14]);
+	vec3 trans = make_vec3(mat.vals[3], mat.vals[7],
+	                        mat.vals[11]);
 	vec3_mult(&trans, -1);
 	mat3x3 rot = mat4x4_get_rot(mat);	
 	mat3x3 inv = mat3x3_transpose(rot);

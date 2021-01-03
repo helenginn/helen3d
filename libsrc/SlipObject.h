@@ -22,6 +22,7 @@
 #include <QtGui/qopengl.h>
 #include <QtGui/qopenglfunctions.h>
 
+#include "Pic2Header.h"
 #include "Frameworks.h"
 #include <mutex>
 #include "vec3.h"
@@ -77,6 +78,13 @@ public:
 	{
 		return sizeof(Helen3D::Vertex) * _vertices.size();
 	}
+
+	void clearVertices()
+	{
+		_vertices.clear();
+		_indices.clear();
+	}
+	
 	
 	void copyFrom(SlipObject *s);
 
@@ -118,6 +126,16 @@ public:
 	void setModel(mat4x4 model)
 	{
 		_model = model;
+	}
+	
+	void setProj(mat4x4 proj)
+	{
+		_proj = proj;
+	}
+	
+	void setUnproj(mat4x4 unproj)
+	{
+		_unproj = unproj;
 	}
 	
 	void lockMutex()
@@ -194,6 +212,8 @@ public:
 	
 	void clearMesh();
 
+	virtual void setFocalPoint(vec3 vec);
+
 	void setColour(double red, double green, double blue)
 	{
 		_red = red;
@@ -221,30 +241,58 @@ protected:
 	void calculateNormalsAndCheck();
 	void setSelectable(bool selectable);
 	void fixCentroid(vec3 centre);
+	void bindOneTexture(Picture &pic);
+	virtual void bindTextures();
 	
 	virtual void extraUniforms() {};
+
+	vec3 getFocus()
+	{
+		return _focus;
+	}
+	
+	void setFocus(vec3 focus)
+	{
+		_focus = focus;
+	}
+	
+	void setNeedsExtra(bool extra)
+	{
+		_extra = extra;
+	}
 
 	std::vector<Helen3D::Vertex> _vertices;
 	std::vector<GLuint> _indices;
 	std::vector<Helen3D::Vertex> _unselectedVertices;
+
 
 	double _red;
 	double _green;
 	double _blue;
 
 	bool _central;
+	bool _usesFocalDepth;
+	bool _usesLighting;
+	bool _backToFront;
 	GLuint _renderType;
 	std::string _vString;
 	std::string _fString;
 	GLuint _program;
+	GLint _uLight;
+	GLint _uFocus;
+
+	GLfloat _lightPos[3];
+	GLfloat _xAxis[3];
+	GLfloat _focalPos[3];
+
 	mat4x4 _model;
 	mat4x4 _proj;
+	mat4x4 _unproj;
 private:
 	GLuint addShaderFromString(GLuint program, GLenum type, std::string str);
 	void checkErrors();
 	void rebindProgram();
 	void deletePrograms();
-	void bindTextures();
 	void addToVertexArray(vec3 add, std::vector<Helen3D::Vertex> *vs);
 
 	static bool index_behind_index(IndexTrio one, IndexTrio two);
@@ -262,13 +310,16 @@ private:
 	Mesh *_mesh;
 	std::mutex _mut;
 	
+	mat4x4 _glProj;
+	mat4x4 _glModel;
+
 	bool _extra;
 	bool _remove;
 	bool _disabled;
 	bool _selected;
 	bool _highlighted;
 	bool _selectable;
-	bool _backToFront;
+	vec3 _focus;
 };
 
 #endif
