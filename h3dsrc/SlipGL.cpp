@@ -284,7 +284,7 @@ void SlipGL::resizeGL(int w, int h)
 
 void SlipGL::setFocalPoint(vec3 pos)
 {
-	for (int i = 0; i < _objects.size(); i++)
+	for (size_t i = 0; i < _objects.size(); i++)
 	{
 		_objects[i]->setFocalPoint(pos);
 	}
