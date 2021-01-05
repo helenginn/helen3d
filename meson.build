@@ -23,9 +23,6 @@ helencore_dep = dependency('', required: false)
 
 helencore_dep = sp_helencore.get_variable('helencore_subdep')
 
-dir_base = meson.current_source_dir()
-helencore_include = join_paths(dir_base, 'subprojects/helencore')
-
 if qt5_dep.found() and dep_gl.found()
 helen3d_scs = true
 moc_files = qt5.preprocess(moc_headers : 
@@ -36,6 +33,8 @@ moc_files = qt5.preprocess(moc_headers :
 'h3dsrc/Curve.h',
 ],
 			moc_extra_arguments: ['-DMAKES_MY_MOC_HEADER_COMPILE'])
+
+helencore_headers = include_directories('subprojects/helencore')
 
 helen3d = library('helen3d', moc_files,
 'h3dsrc/CurveView.cpp',
@@ -49,6 +48,7 @@ helen3d = library('helen3d', moc_files,
 'h3dsrc/SlipObject.cpp',
 'h3dsrc/SlipObjFile.cpp',
 cpp_args: ['-std=c++11'], 
+include_directories : helencore_headers,
 dependencies : [ helencore_dep, boost_dep, qt5_dep ], 
 install: true)
 
@@ -78,6 +78,7 @@ pkg.generate([helen3d],
              description : 'Library for 3D utilities by Helen')
 
 helen3d_inc = include_directories('h3dsrc')
-helen3d_subdep = declare_dependency(link_with: helen3d, include_directories: helen3d_inc)
+helen3d_subdep = declare_dependency(link_with: helen3d, 
+include_directories: helen3d_inc)
 
 endif
