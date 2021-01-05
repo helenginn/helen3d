@@ -19,8 +19,6 @@ run_command('get_hash.sh')
 
 # this will obtain the helencore
 sp_helencore = subproject('helencore')
-helencore_dep = dependency('', required: false)
-
 helencore_dep = sp_helencore.get_variable('helencore_subdep')
 
 if qt5_dep.found() and dep_gl.found()

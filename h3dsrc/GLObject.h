@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include "Picture.h"
 #include <vector>
-#include "../libsrc/mat4x4.h"
+#include <hcsrc/mat4x4.h>
 #include <iostream>
 #include <QOpenGLDebugLogger>
 
