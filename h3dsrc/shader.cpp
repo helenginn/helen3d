@@ -35,17 +35,7 @@
 
 #include <string.h>
 #include <string>
-#include "../libsrc/FileReader.h"
-
-/*
- * Returns a string containing the text in
- * a vertex/fragment shader source file.
- */
-static char *shaderLoadSource(const char *filePath)
-{
-    std::string contents = get_file_contents(filePath);
-    return (char *)contents.c_str();
-}
+#include <hcsrc/FileReader.h>
 
 Shader::Shader()
 {
