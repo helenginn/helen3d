@@ -64,7 +64,7 @@ install_headers([
 'h3dsrc/SlipObjFile.h',
 'h3dsrc/SlipObject.h',
 ],
- subdir : 'helen3d')
+ subdir : 'h3dsrc')
 
 pkg = import('pkgconfig')
 h = ['helen3d'] # subdirectories of ${prefix}/${includedir} to add to header path
