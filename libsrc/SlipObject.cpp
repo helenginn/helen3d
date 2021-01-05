@@ -1140,6 +1140,7 @@ void SlipObject::writeObjFile(std::string filename)
 {
 	std::ofstream file;
 	file.open(filename);
+	std::cout << "Writing to " << filename << std::endl;
 
 	for (size_t i = 0; i < _vertices.size(); i++)
 	{
