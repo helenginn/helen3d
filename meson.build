@@ -17,69 +17,54 @@ hash_script = find_program('get_hash.sh')
 # This will produce the dependency file.
 run_command('get_hash.sh')
 
+# this will obtain the helencore
+sp_helencore = subproject('helencore')
+helencore_dep = dependency('', required: false)
+
+helencore_dep = sp_helencore.get_variable('helencore_subdep')
+
+dir_base = meson.current_source_dir()
+helencore_include = join_paths(dir_base, 'subprojects/helencore')
+
 if qt5_dep.found() and dep_gl.found()
 helen3d_scs = true
 moc_files = qt5.preprocess(moc_headers : 
-['libsrc/SlipGL.h',
-'libsrc/Mesh.h',
-'libsrc/Plot3D.h',
-'libsrc/CurveView.h',
-'libsrc/Curve.h',
+['h3dsrc/SlipGL.h',
+'h3dsrc/Mesh.h',
+'h3dsrc/Plot3D.h',
+'h3dsrc/CurveView.h',
+'h3dsrc/Curve.h',
 ],
 			moc_extra_arguments: ['-DMAKES_MY_MOC_HEADER_COMPILE'])
 
 helen3d = library('helen3d', moc_files,
-'libsrc/CurveView.cpp',
-'libsrc/Curve.cpp',
-'libsrc/Icosahedron.cpp',
-'libsrc/FileReader.cpp',
-#'libsrc/GLObject.cpp',
-'libsrc/lbfgs.c',
-'libsrc/Mesh.cpp',
-'libsrc/Plot3D.cpp',
-'libsrc/RefinementGridSearch.cpp', 
-'libsrc/RefinementLBFGS.cpp', 
-'libsrc/RefinementList.cpp', 
-'libsrc/RefinementNelderMead.cpp', 
-'libsrc/RefinementStepSearch.cpp', 
-'libsrc/RefinementStrategy.cpp', 
-'libsrc/shader.cpp',
-'libsrc/SlipGL.cpp',
-'libsrc/SlipObject.cpp',
-'libsrc/SlipObjFile.cpp',
-'libsrc/Timer.cpp', 
-'libsrc/vec3.cpp',
-'libsrc/mat3x3.cpp',
-'libsrc/mat4x4.cpp',
-cpp_args: ['-std=c++11'], dependencies : [ boost_dep, qt5_dep ], 
+'h3dsrc/CurveView.cpp',
+'h3dsrc/Curve.cpp',
+'h3dsrc/Icosahedron.cpp',
+'h3dsrc/lbfgs.c',
+'h3dsrc/Mesh.cpp',
+'h3dsrc/Plot3D.cpp',
+'h3dsrc/shader.cpp',
+'h3dsrc/SlipGL.cpp',
+'h3dsrc/SlipObject.cpp',
+'h3dsrc/SlipObjFile.cpp',
+cpp_args: ['-std=c++11'], 
+dependencies : [ helencore_dep, boost_dep, qt5_dep ], 
 install: true)
 
 install_headers([
-'libsrc/Curve.h',
-'libsrc/CurveView.h',
-'libsrc/Dialogue.h',
-'libsrc/FileReader.h',
-'libsrc/Frameworks.h',
-#'libsrc/GLObject.h',
-'libsrc/Icosahedron.h',
-'libsrc/Mesh.h',
-'libsrc/Pic2Header.h',
-'libsrc/Picture.h',
-'libsrc/Plot3D.h',
-'libsrc/RefinementGridSearch.h',
-'libsrc/RefinementLBFGS.h',
-'libsrc/RefinementList.h',
-'libsrc/RefinementNelderMead.h',
-'libsrc/RefinementStepSearch.h',
-'libsrc/RefinementStrategy.h',
-'libsrc/SlipGL.h',
-'libsrc/SlipObjFile.h',
-'libsrc/SlipObject.h',
-'libsrc/Timer.h', 
-'libsrc/charmanip.h',
-'libsrc/mat3x3.h',
-'libsrc/mat4x4.h',
-'libsrc/vec3.h',
+'h3dsrc/Curve.h',
+'h3dsrc/CurveView.h',
+'h3dsrc/Dialogue.h',
+'h3dsrc/Frameworks.h',
+'h3dsrc/Icosahedron.h',
+'h3dsrc/Mesh.h',
+'h3dsrc/Pic2Header.h',
+'h3dsrc/Picture.h',
+'h3dsrc/Plot3D.h',
+'h3dsrc/SlipGL.h',
+'h3dsrc/SlipObjFile.h',
+'h3dsrc/SlipObject.h',
 ],
  subdir : 'helen3d')
 
@@ -92,7 +77,7 @@ pkg.generate([helen3d],
              filebase : 'helen3d',
              description : 'Library for 3D utilities by Helen')
 
-helen3d_inc = include_directories('libsrc')
+helen3d_inc = include_directories('h3dsrc')
 helen3d_subdep = declare_dependency(link_with: helen3d, include_directories: helen3d_inc)
 
 endif
