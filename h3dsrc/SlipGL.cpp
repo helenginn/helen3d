@@ -52,6 +52,9 @@ void SlipGL::setBackground(double r, double g, double b, double a)
 
 SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 {
+	zNear = 4;
+	zFar = 400;
+
 	setBackground(0, 0, 0, 1);
 	_invertZ = false;
 	_paused = false;
@@ -257,7 +260,6 @@ void SlipGL::setupCamera()
 	_camBeta = 0;
 	_camGamma = 0;
 	_model = make_mat4x4();
-	zNear = 0; zFar = 0;
 
 	updateProjection();
 	updateCamera();
@@ -266,9 +268,6 @@ void SlipGL::setupCamera()
 
 void SlipGL::updateProjection(double side)
 {
-	zNear = 4;
-	zFar = 400;
-
 	float aspect = (float)height() / (float)width();
 	
 	_proj = mat4x4_frustum(-side, side, side * aspect, -side * aspect,

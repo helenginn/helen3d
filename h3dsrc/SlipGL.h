@@ -49,6 +49,12 @@ public:
 		_invertZ = z;
 	}
 	
+	void setZFar(double far)
+	{
+		zFar = far;
+		updateProjection();
+	}
+	
 	SlipObject *activeObj()
 	{
 		return _activeObj;
