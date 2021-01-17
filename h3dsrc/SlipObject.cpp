@@ -79,6 +79,15 @@ SlipObject::SlipObject()
 	_selectable = 0;
 }
 
+SlipObject::~SlipObject()
+{
+	if (_mesh != NULL)
+	{
+		delete _mesh;
+		_mesh = NULL;
+	}
+}
+
 GLuint SlipObject::addShaderFromString(GLuint program, GLenum type, 
                                        std::string str)
 {

@@ -52,6 +52,13 @@ void SlipGL::setBackground(double r, double g, double b, double a)
 
 SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 {
+	_acceptsFocus = true;
+	_shiftPressed = false;
+	_controlPressed = false;
+	_moving = false;
+	_lastX = -1;
+	_lastY = -1;
+	_mouseButton = Qt::NoButton;
 	zNear = 4;
 	zFar = 400;
 
@@ -65,7 +72,11 @@ SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 	connect(_timer, &QTimer::timeout, this, &SlipGL::time);
 	_timer->start();
 
-	setGeometry(p->geometry());
+	if (p)
+	{
+		setGeometry(p->geometry());
+	}
+
 	setupCamera();
 }
 
@@ -291,10 +302,122 @@ void SlipGL::setFocalPoint(vec3 pos)
 
 void SlipGL::focusOnPosition(vec3 pos, double dist)
 {
+	if (pos.x != pos.x)
+	{
+		return;
+	}
+
 	vec3 newPos = transformPosByModel(pos);
 	_centre = newPos;
 	vec3_mult(&newPos, -1);
 	newPos.z -= dist;
 
 	_translation = vec3_add_vec3(_translation, newPos);
+}
+
+void SlipGL::mousePressEvent(QMouseEvent *e)
+{
+	if (!_acceptsFocus)
+	{
+		e->ignore();
+		return;
+	}
+
+	_lastX = e->x();
+	_lastY = e->y();
+	_mouseButton = e->button();
+	_moving = false;
+}
+
+void SlipGL::mouseMoveEvent(QMouseEvent *e)
+{
+	if (!_acceptsFocus)
+	{
+		e->ignore();
+		return;
+	}
+
+	double x = e->x(); double y = e->y();
+	convertCoords(&x, &y);
+	_moving = true;
+	
+	double newX = e->x();
+	double xDiff = _lastX - newX;
+	double newY = e->y();
+	double yDiff = _lastY - newY;
+	_lastX = newX;
+	_lastY = newY;
+
+	if (_mouseButton == Qt::LeftButton)
+	{
+		if (_controlPressed)
+		{
+			panned(xDiff / 30, yDiff / 30);
+		}
+		else
+		{
+			draggedLeftMouse(xDiff * 4, yDiff * 4);
+		}
+	}
+	else if (_mouseButton == Qt::RightButton)
+	{
+		draggedRightMouse(xDiff * 30, yDiff * 30);
+	}
+}
+
+void SlipGL::mouseReleaseEvent(QMouseEvent *e)
+{
+	if (!_acceptsFocus)
+	{
+		e->ignore();
+		return;
+	}
+
+	_mouseButton = Qt::NoButton;
+}
+
+
+void SlipGL::keyPressEvent(QKeyEvent *event)
+{
+	if (!_acceptsFocus)
+	{
+		event->ignore();
+		return;
+	}
+
+	if (event->key() == Qt::Key_Alt || event->key() == Qt::Key_Control)
+	{
+		_controlPressed = true;
+	}
+	else if (event->key() == Qt::Key_Shift)
+	{
+		_shiftPressed = true;
+	}
+}
+
+void SlipGL::keyReleaseEvent(QKeyEvent *event)
+{
+	if (!_acceptsFocus)
+	{
+		event->ignore();
+		return;
+	}
+	
+	if (event->key() == Qt::Key_Alt || event->key() == Qt::Key_Control)
+	{
+		_controlPressed = false;
+	}
+	else if (event->key() == Qt::Key_Shift)
+	{
+		_shiftPressed = false;
+	}
+}
+
+void SlipGL::convertCoords(double *x, double *y)
+{
+	double w = width();
+	double h = height();
+
+	*x = 2 * *x / w - 1.0;
+	*y =  - (2 * *y / h - 1.0);
 }

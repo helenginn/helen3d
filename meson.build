@@ -29,6 +29,7 @@ moc_files = qt5.preprocess(moc_headers :
 'h3dsrc/Plot3D.h',
 'h3dsrc/CurveView.h',
 'h3dsrc/Curve.h',
+'h3dsrc/Dictator.h',
 ],
 			moc_extra_arguments: ['-DMAKES_MY_MOC_HEADER_COMPILE'])
 
@@ -37,6 +38,7 @@ helencore_headers = include_directories('subprojects/helencore')
 helen3d = library('helen3d', moc_files,
 'h3dsrc/CurveView.cpp',
 'h3dsrc/Curve.cpp',
+'h3dsrc/Dictator.cpp',
 'h3dsrc/Icosahedron.cpp',
 'h3dsrc/lbfgs.c',
 'h3dsrc/Mesh.cpp',
@@ -54,6 +56,7 @@ install_headers([
 'h3dsrc/Curve.h',
 'h3dsrc/CurveView.h',
 'h3dsrc/Dialogue.h',
+'h3dsrc/Dictator.h',
 'h3dsrc/Frameworks.h',
 'h3dsrc/Icosahedron.h',
 'h3dsrc/Mesh.h',

@@ -22,6 +22,7 @@
 #include <QtWidgets/qopenglwidget.h>
 #include <QtGui/qopengl.h>
 #include <QtGui/qopenglfunctions.h>
+#include <QMouseEvent>
 
 #include "mat4x4.h"
 
@@ -47,6 +48,11 @@ public:
 	void setInvertZ(bool z)
 	{
 		_invertZ = z;
+	}
+	
+	void setAcceptsFocus(bool accepts)
+	{
+		_acceptsFocus = accepts;
 	}
 	
 	void setZFar(double far)
@@ -102,10 +108,17 @@ public:
 public slots:
 	
 protected:
+	virtual void mousePressEvent(QMouseEvent *e);
+	virtual void mouseReleaseEvent(QMouseEvent *e);
+	virtual void mouseMoveEvent(QMouseEvent *e);
+	virtual void keyPressEvent(QKeyEvent *event);
+	virtual void keyReleaseEvent(QKeyEvent *event);
+
 	virtual void initializeGL();
 	virtual void paintGL();
 	virtual void resizeGL(int w, int h);
 	virtual void setFocalPoint(vec3 pos);
+	void convertCoords(double *x, double *y);
 
 	void initialisePrograms();
 	void zoom(float x, float y, float z);
@@ -138,6 +151,15 @@ protected:
 	SlipObject *_activeObj;
 
 	double _a; double _r; double _g; double _b;
+
+	double _lastX; double _lastY;
+	bool _moving;
+	Qt::MouseButton _mouseButton;
+	bool _controlPressed;
+	bool _shiftPressed;
+	bool _acceptsFocus;
+	
+	QWidget *_p;
 
 	struct detector *_d;
 };

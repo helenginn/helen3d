@@ -50,7 +50,7 @@ class SlipObject : public QOpenGLFunctions
 {
 public:
 	SlipObject();
-	virtual ~SlipObject() {};
+	virtual ~SlipObject();
 	void initialisePrograms(std::string *v = NULL, std::string *f = NULL);
 	virtual void render(SlipGL *sender);
 	
