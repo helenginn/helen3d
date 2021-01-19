@@ -19,6 +19,7 @@
 #include "SlipGL.h"
 #include "SlipObject.h"
 #include <QApplication>
+#include <QDesktopWidget>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QWindow>
@@ -28,21 +29,33 @@
 
 #define MOUSE_SENSITIVITY 500
 
+bool SlipGL::_setup = false;
+
 void SlipGL::initializeGL()
 {
 	initializeOpenGLFunctions();
+	
+	checkErrors("before initializeGL");
 
 	glClearColor(_r, _g, _b, _a);
+	checkErrors("clear color");
 	glEnable(GL_DEPTH_TEST);
+	checkErrors("depth test");
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	checkErrors("clear buffer bits");
 
 	glEnable(GL_BLEND);
+	checkErrors("blend");
 	glEnable(GL_POINT_SPRITE);
+	checkErrors("point sprite");
 	glEnable(GL_PROGRAM_POINT_SIZE);
+	checkErrors("point size");
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	checkErrors("blend func");
 
 	initialisePrograms();
+	_setup = true;
 }
 
 void SlipGL::setBackground(double r, double g, double b, double a)
@@ -52,6 +65,7 @@ void SlipGL::setBackground(double r, double g, double b, double a)
 
 SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 {
+	_dbCount = 0;
 	_acceptsFocus = true;
 	_shiftPressed = false;
 	_controlPressed = false;
@@ -78,6 +92,7 @@ SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 	}
 
 	setupCamera();
+
 }
 
 void SlipGL::pause()
@@ -200,6 +215,12 @@ void SlipGL::draggedRightMouse(double x, double y)
 	zoom(0, 0, -y / MOUSE_SENSITIVITY * 10);
 	update();
 }
+
+void SlipGL::showEvent(QShowEvent *e)
+{
+	QOpenGLWidget::showEvent(e);
+}
+
 void SlipGL::initialisePrograms()
 {
 	for (unsigned int i = 0; i < _objects.size(); i++)
@@ -208,8 +229,54 @@ void SlipGL::initialisePrograms()
 	}
 }
 
+void SlipGL::resizeDepthBuffers(int w, int h)
+{
+	for (size_t i = 0; i < _dbCount; i++)
+	{
+		glBindRenderbuffer(GL_RENDERBUFFER, _depthRbo[i]);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	}
+}
+
+void SlipGL::prepareDepthBuffer(size_t count)
+{
+	_dbCount = count;
+
+	glGenFramebuffers(count, _depthFbo);
+	glGenRenderbuffers(count, _depthRbo);
+
+	for (size_t i = 0; i < count; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, _depthFbo[i]);
+
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		
+		int w = width(); int h = height();
+		int ratio = QApplication::desktop()->devicePixelRatio();
+		w *= ratio; h *= ratio;
+
+		glBindRenderbuffer(GL_RENDERBUFFER, _depthRbo[i]);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+		                          GL_RENDERBUFFER, _depthRbo[i]);
+
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			std::cout << "Problem with frame buffer!" << std::endl;
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+}
+
 void SlipGL::paintGL()
 {
+	checkErrors("before paintGL");
 	updateCamera();
 	if (_paused)
 	{
@@ -217,7 +284,10 @@ void SlipGL::paintGL()
 	}
 
 	glClearColor(_r, _g, _b, _a);
+	checkErrors("clear color");
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	checkErrors("clear buffer bits");
+
 	for (unsigned int i = 0; i < _objects.size(); i++)
 	{
 		if (_objects[i]->shouldRemove())
@@ -289,7 +359,9 @@ void SlipGL::updateProjection(double side)
 
 void SlipGL::resizeGL(int w, int h)
 {
+	int ratio = QApplication::desktop()->devicePixelRatio();
 	updateProjection();
+	resizeDepthBuffers(w * ratio, h * ratio);
 }
 
 void SlipGL::setFocalPoint(vec3 pos)
@@ -421,3 +493,79 @@ void SlipGL::convertCoords(double *x, double *y)
 	*x = 2 * *x / w - 1.0;
 	*y =  - (2 * *y / h - 1.0);
 }
+
+void SlipGL::copyDefaultToOffscreenDepthBuffer(int which)
+{
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, defaultFramebufferObject());
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _depthFbo[which]);
+
+	int ratio = QApplication::desktop()->devicePixelRatio();
+
+	glBlitFramebuffer(0, 0, ratio * width(), ratio * height(),
+	                  0, 0, ratio * width(), ratio * height(),
+	                  GL_DEPTH_BUFFER_BIT,
+	                  GL_NEAREST);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void SlipGL::copyOffscreenDepthBufferToDefault(int which)
+{
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, _depthFbo[which]);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, defaultFramebufferObject());
+
+	int ratio = QApplication::desktop()->devicePixelRatio();
+
+	glBlitFramebuffer(0, 0, ratio * width(), ratio * height(),
+	                  0, 0, ratio * width(), ratio * height(),
+	                  GL_DEPTH_BUFFER_BIT,
+	                  GL_NEAREST);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+bool SlipGL::checkErrors(std::string what)
+{
+	GLenum err = glGetError();
+
+	if (err != 0)
+	{
+		std::cout << "Error as SlipGL was doing " << what << ":" 
+		<< err << std::endl;
+		
+		switch (err)
+		{
+			case GL_INVALID_ENUM:
+			std::cout << "Invalid enumeration" << std::endl;
+			break;
+
+			case GL_STACK_OVERFLOW:
+			std::cout << "Stack overflow" << std::endl;
+			break;
+
+			case GL_STACK_UNDERFLOW:
+			std::cout << "Stack underflow" << std::endl;
+			break;
+
+			case GL_OUT_OF_MEMORY:
+			std::cout << "Out of memory" << std::endl;
+			break;
+
+			case GL_INVALID_FRAMEBUFFER_OPERATION:
+			std::cout << "Invalid framebuffer op" << std::endl;
+			break;
+
+			case GL_INVALID_VALUE:
+			std::cout << "Invalid value" << std::endl;
+			break;
+
+			case GL_INVALID_OPERATION:
+			std::cout << "Invalid operation" << std::endl;
+			break;
+
+		}
+	}
+	
+	return (err != 0);
+}
+

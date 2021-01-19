@@ -20,7 +20,8 @@
 #define __Slip_SlipObject__
 
 #include <QtGui/qopengl.h>
-#include <QtGui/qopenglfunctions.h>
+#include <QOpenGLFunctions>
+#include <QOpenGLExtraFunctions>
 
 #include "Pic2Header.h"
 #include "Frameworks.h"
@@ -46,12 +47,13 @@ inline void pos_from_vec(GLfloat *pos, vec3 v)
 class SlipGL;
 class Mesh;
 
-class SlipObject : public QOpenGLFunctions
+class SlipObject : public QOpenGLExtraFunctions
 {
 public:
 	SlipObject();
 	virtual ~SlipObject();
-	void initialisePrograms(std::string *v = NULL, std::string *f = NULL);
+	void initialisePrograms(std::string *v = NULL, std::string *f = NULL,
+	                        std::string *g = NULL);
 	virtual void render(SlipGL *sender);
 	
 	Helen3D::Vertex *vPointer()
@@ -166,6 +168,7 @@ public:
 	void changeProgram(std::string &v, std::string &f);
 	vec3 centroid();
 	vec3 randomVertex();
+	void setPosition(vec3 pos);
 	vec3 nearestVertex(vec3 pos, bool useMesh = false);
 	vec3 nearestVertexNearNormal(vec3 pos, vec3 normal, bool *isBehind);
 	Helen3D::Vertex *nearestVertexPtr(vec3 pos, bool useMesh);
@@ -191,7 +194,9 @@ public:
 	{
 		return _mesh;
 	}
-
+	
+	void clearMesh();
+	
 	bool pointInside(vec3 point);
 	void colourOutlayBlack();
 	void changeToLines();
@@ -209,10 +214,15 @@ public:
 		return _remove;
 	}
 
-	
-	void clearMesh();
+	void setShadersLike(SlipObject *o)
+	{
+		_vString = o->_vString;
+		_fString = o->_fString;
+	}
 
 	virtual void setFocalPoint(vec3 vec);
+	bool checkErrors(std::string what = "");
+	void deleteVBOBuffers();
 
 	void setColour(double red, double green, double blue)
 	{
@@ -227,6 +237,7 @@ public:
 	
 	void changeVertexShader(std::string v);
 	void changeFragmentShader(std::string f);
+	virtual void calculateNormals(bool flip = false);
 protected:
 	bool polygonIncludes(vec3 point, GLuint *trio);
 	bool polygonIncludes(vec3 point, vec3 *vs);
@@ -237,7 +248,6 @@ protected:
 	void addVertex(vec3 v, std::vector<Helen3D::Vertex> *vec);
 	void addIndex(GLuint i);
 	void addIndices(GLuint i1, GLuint i2, GLuint i3);
-	virtual void calculateNormals(bool flip = false);
 	void calculateNormalsAndCheck();
 	void setSelectable(bool selectable);
 	void fixCentroid(vec3 centre);
@@ -265,6 +275,7 @@ protected:
 	std::vector<GLuint> _indices;
 	std::vector<Helen3D::Vertex> _unselectedVertices;
 
+	double _meshDot;
 
 	double _red;
 	double _green;
@@ -277,6 +288,7 @@ protected:
 	GLuint _renderType;
 	std::string _vString;
 	std::string _fString;
+	std::string _gString;
 	GLuint _program;
 	GLint _uLight;
 	GLint _uFocus;
@@ -290,8 +302,10 @@ protected:
 	mat4x4 _unproj;
 private:
 	GLuint addShaderFromString(GLuint program, GLenum type, std::string str);
-	void checkErrors();
-	void rebindProgram();
+	void rebindVBOBuffers();
+	void unbindVBOBuffers();
+	void setupVBOBuffers();
+	int vaoForContext();
 	void deletePrograms();
 	void addToVertexArray(vec3 add, std::vector<Helen3D::Vertex> *vs);
 
@@ -300,7 +314,8 @@ private:
 
 	std::string _random;
 	GLuint _bufferID;
-	GLuint _vbo;
+	GLuint _bElement;
+	std::map<QOpenGLContext *, GLuint> _vaoMap;
 	GLuint _uModel;
 	GLuint _uProj;
 	GLuint _uTime;

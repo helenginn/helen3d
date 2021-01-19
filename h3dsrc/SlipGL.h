@@ -21,7 +21,8 @@
 
 #include <QtWidgets/qopenglwidget.h>
 #include <QtGui/qopengl.h>
-#include <QtGui/qopenglfunctions.h>
+#include <QOpenGLFunctions>
+#include <QOpenGLExtraFunctions>
 #include <QMouseEvent>
 
 #include "mat4x4.h"
@@ -29,7 +30,7 @@
 class SlipObject;
 class QTimer;
 
-class SlipGL : public QOpenGLWidget, QOpenGLFunctions
+class SlipGL : public QOpenGLWidget, QOpenGLExtraFunctions
 {
 	Q_OBJECT
 	
@@ -105,9 +106,18 @@ public:
 	void removeObject(SlipObject *obj);
 	
 	void setBackground(double r, double g, double b, double a);
+
+	void copyOffscreenDepthBufferToDefault(int which);
+	void copyDefaultToOffscreenDepthBuffer(int which);
+	bool checkErrors(std::string what = "");
 public slots:
 	
 protected:
+	void prepareDepthBuffer(size_t count);
+	void resizeDepthBuffers(int w, int h);
+
+	virtual void showEvent(QShowEvent *e);
+
 	virtual void mousePressEvent(QMouseEvent *e);
 	virtual void mouseReleaseEvent(QMouseEvent *e);
 	virtual void mouseMoveEvent(QMouseEvent *e);
@@ -131,6 +141,10 @@ protected:
 	{
 		return _activeObj;
 	}
+	
+	GLuint _depthRbo[5];
+	GLuint _depthFbo[5];
+	size_t _dbCount;
 	
 	float _camAlpha, _camBeta, _camGamma;
 	float zNear, zFar;
@@ -161,6 +175,7 @@ protected:
 	
 	QWidget *_p;
 
+	static bool _setup;
 	struct detector *_d;
 };
 

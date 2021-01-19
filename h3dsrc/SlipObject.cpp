@@ -59,6 +59,7 @@ void SlipObject::addToVertices(vec3 add)
 SlipObject::SlipObject()
 {
 	_name = "generic object";
+	_meshDot = 0.9;
 	_vString = Pencil_vsh();
 	_fString = Pencil_fsh();
 	_remove = false;
@@ -67,7 +68,7 @@ SlipObject::SlipObject()
 	_program = 0;
 	_backToFront = false;
 	_bufferID = 0;
-	_vbo = 0;
+	_bElement = 0;
 	_uModel = 0;
 	_extra = false;
 	_focus = empty_vec3();
@@ -87,6 +88,9 @@ SlipObject::~SlipObject()
 		delete _mesh;
 		_mesh = NULL;
 	}
+	
+	deletePrograms();
+	deleteVBOBuffers();
 }
 
 GLuint SlipObject::addShaderFromString(GLuint program, GLenum type, 
@@ -96,8 +100,34 @@ GLuint SlipObject::addShaderFromString(GLuint program, GLenum type,
 
 	const char *cstr = str.c_str();
 	GLuint shader = glCreateShader(type);
+	bool error = checkErrors("create shader");
+	
+	if (error)
+	{
+		switch (type)
+		{
+			case GL_GEOMETRY_SHADER:
+			std::cout <<  "geometry" << std::endl;
+			break;
+			
+			case GL_VERTEX_SHADER:
+			std::cout <<  "vertex" << std::endl;
+			break;
+			
+			case GL_FRAGMENT_SHADER:
+			std::cout <<  "fragment" << std::endl;
+
+			default:
+			std::cout << "Other" << std::endl;
+			break;
+		}
+	}
+
 	glShaderSource(shader, 1, &cstr, &length);
+	checkErrors("sourcing shader");
+	
 	glCompileShader(shader);
+	checkErrors("compiling shader");
 
 	GLint result;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
@@ -127,12 +157,23 @@ GLuint SlipObject::addShaderFromString(GLuint program, GLenum type,
 
 void SlipObject::deletePrograms()
 {
-	glDeleteProgram(_program);
+	if (_program != 0)
+	{
+		glDeleteProgram(_program);
+	}
 	_program = 0;
 }
 
-void SlipObject::initialisePrograms(std::string *v, std::string *f)
+void SlipObject::initialisePrograms(std::string *v, std::string *f,
+                                    std::string *g)
 {
+	initializeOpenGLFunctions();
+
+	if (_program != 0)
+	{
+		return;
+	}
+
 	if (v == NULL)
 	{
 		v = &_vString;
@@ -142,8 +183,11 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f)
 	{
 		f = &_fString;
 	}
-	
-	initializeOpenGLFunctions();
+
+	if (g == NULL)
+	{
+		g = &_gString;
+	}
 
 	GLint result;
 
@@ -151,7 +195,16 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f)
 	_program = glCreateProgram();
 
 	addShaderFromString(_program, GL_VERTEX_SHADER, *v);
+	checkErrors("adding vshader");
+	
+	if (g->length() > 0)
+	{
+		addShaderFromString(_program, GL_GEOMETRY_SHADER, *g);
+		checkErrors("adding gshader");
+	}
+
 	addShaderFromString(_program, GL_FRAGMENT_SHADER, *f);
+	checkErrors("adding fshader");
 
 	glBindAttribLocation(_program, 0, "position");
 	glBindAttribLocation(_program, 1, "normal");
@@ -171,10 +224,12 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f)
 		glBindAttribLocation(_program, 4, "tex");
 	}
 
+	checkErrors("binding attributions");
+
 	/* link the program and make sure that there were no errors */
 	glLinkProgram(_program);
 	glGetProgramiv(_program, GL_LINK_STATUS, &result);
-	checkErrors();
+	checkErrors("linking program");
 
 	if (result == GL_FALSE)
 	{
@@ -185,19 +240,12 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f)
 		/* get the shader info log */
 		glGetProgramInfoLog(_program, GL_INFO_LOG_LENGTH, &length, log);
 
-
 		/* print an error message and the info log */
 		std::cout << log << std::endl;
 		/* delete the program */
 		glDeleteProgram(_program);
 		_program = 0;
 	}
-
-	glGenBuffers(1, &_bufferID);
-	glGenBuffers(1, &_vbo);
-
-	bindTextures();
-	rebindProgram();
 }
 
 void SlipObject::bindTextures()
@@ -206,14 +254,11 @@ void SlipObject::bindTextures()
 
 	glDeleteTextures(1, &_textures[0]);
 	glGenTextures(1, &_textures[0]);
-
-	/*
-	getImage()->bindToTexture(this);
-	*/
 }
 
 void SlipObject::bindOneTexture(Picture &pic)
 {
+	bindTextures();
 	glBindTexture(GL_TEXTURE_2D, _textures[0]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pic.width, pic.height, 
 	             0, GL_RGBA, GL_UNSIGNED_BYTE, pic.data);
@@ -222,25 +267,102 @@ void SlipObject::bindOneTexture(Picture &pic)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
-	checkErrors();
+	checkErrors("binding textures");
 }
 
-void SlipObject::rebindProgram()
+void SlipObject::unbindVBOBuffers()
 {
+	if (_textures.size())
+	{
+		glDisableVertexAttribArray(4); 
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	checkErrors("vbo buffer unbinding");
+}
+
+void SlipObject::deleteVBOBuffers()
+{
+	std::map<QOpenGLContext *, GLuint>::iterator it;
+	for (it = _vaoMap.begin(); it != _vaoMap.end(); it++)
+	{
+		GLuint vao = it->second;
+//		glDeleteVertexArrays(1, &vao);
+	}
+}
+
+void SlipObject::rebindVBOBuffers()
+{
+	int vao = vaoForContext();
+	glBindVertexArray(vao);
+
+	bool error = checkErrors("vertex array rebinding");
+	
+	if (error)
+	{
+		std::cout << "Vao: " << vao << std::endl;
+	}
+
+	checkErrors("vertex array attribute reenabling");
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _bElement);
+	checkErrors("index array binding");
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, iSize(), iPointer(), GL_STATIC_DRAW);
+	checkErrors("index array buffering");
 	glBindBuffer(GL_ARRAY_BUFFER, _bufferID);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbo);
+	checkErrors("vbo binding");
+	glBufferData(GL_ARRAY_BUFFER, vSize(), vPointer(), GL_STATIC_DRAW);
+	checkErrors("vbo buffering");
+}
+
+int SlipObject::vaoForContext()
+{
+	QOpenGLContext *c = QOpenGLContext::currentContext();
+	
+	if (_vaoMap.count(c))
+	{
+		GLuint vao = _vaoMap[c];
+		return vao;
+	}
+	
+	GLuint vao = 0;
+	glGenVertexArrays(1, &vao);
+	_vaoMap[c] = vao;
+	setupVBOBuffers();
+	
+	return vao;
+}
+
+void SlipObject::setupVBOBuffers()
+{
+	int vao = vaoForContext();
+	glBindVertexArray(vao);
+
+	glGenBuffers(1, &_bufferID);
+
+	glBindBuffer(GL_ARRAY_BUFFER, _bufferID);
+	checkErrors("binding array buffer");
 
 	glBufferData(GL_ARRAY_BUFFER, vSize(), vPointer(), GL_STATIC_DRAW);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, iSize(), iPointer(), GL_STATIC_DRAW);
 
-	checkErrors();
+	checkErrors("rebuffering data buffer");
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
 
 	/* Vertices */
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 
 	                      (void *)(0 * sizeof(float)));
+	checkErrors("binding vertices");
+
 	/* Normals */
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
 	                      (void *)(3 * sizeof(float)));
+	checkErrors("binding indices");
 
 	/* Colours */
 	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), 
@@ -249,33 +371,46 @@ void SlipObject::rebindProgram()
 	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
 	                      (void *)(10 * sizeof(float)));
 
-	checkErrors();
+	checkErrors("binding attributes");
 
 	if (_textures.size())
 	{
 		glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(14 * sizeof(float)));
+
+		checkErrors("rebinding texture attributes");
 	}
-
-	checkErrors();
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
 
 	if (_textures.size())
 	{
 		glEnableVertexAttribArray(4); 
 	}
+
+	glGenBuffers(1, &_bElement);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _bElement);
+	checkErrors("binding element array buffer");
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, iSize(), iPointer(), GL_STATIC_DRAW);
+	checkErrors("rebuffering data element array buffer");
+	
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	glBindVertexArray(0);
+
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
+	glDisableVertexAttribArray(4);
 }
 
-void SlipObject::checkErrors()
+bool SlipObject::checkErrors(std::string what)
 {
 	GLenum err = glGetError();
 
 	if (err != 0)
 	{
-		std::cout << "OUCH " << err << std::endl;
+		std::cout << "Error as " << _name << " was doing " << what << ":" 
+		<< err << std::endl;
 		
 		switch (err)
 		{
@@ -309,6 +444,8 @@ void SlipObject::checkErrors()
 
 		}
 	}
+	
+	return (err != 0);
 }
 
 void SlipObject::render(SlipGL *sender)
@@ -324,15 +461,24 @@ void SlipObject::render(SlipGL *sender)
 		return;
 	}
 	
+	if (vSize() == 0 || iSize() == 0)
+	{
+		unlockMutex();
+		return;
+	}
+	
 	if (_program == 0)
 	{
 		initialisePrograms();
+		setupVBOBuffers();
 	}
 	
+
 	glUseProgram(_program);
-	rebindProgram();
+	checkErrors("use program");
+	rebindVBOBuffers();
 	
-	checkErrors();
+	checkErrors("rebinding program");
 
 	_model = sender->getModel();
 	const char *uniform_name = "model";
@@ -359,9 +505,10 @@ void SlipObject::render(SlipGL *sender)
 	}
 	
 	glDrawElements(_renderType, indexCount(), GL_UNSIGNED_INT, 0);
-	checkErrors();
+	checkErrors("drawing elements");
 	
 	glUseProgram(0);
+	unbindVBOBuffers();
 	unlockMutex();
 }
 
@@ -470,7 +617,8 @@ double SlipObject::envelopeRadius()
 void SlipObject::changeProgram(std::string &v, std::string &f)
 {
 	deletePrograms();
-	initialisePrograms(&v, &f);
+	_vString = v;
+	_fString = f;
 }
 
 void SlipObject::fixCentroid(vec3 centre)
@@ -729,7 +877,7 @@ vec3 SlipObject::nearestVertexNearNormal(vec3 pos, vec3 normal,
 		
 		double dot = vec3_dot_vec3(diff, normal);
 		
-		if (fabs(dot) < 0.9) { continue; }
+		if (fabs(dot) < _meshDot) { continue; }
 		
 		if (dot < 0) { *isBehind = true; }
 		
@@ -1462,6 +1610,11 @@ void SlipObject::colourOutlayBlack()
 
 void SlipObject::clearMesh()
 {
+	if (!hasMesh())
+	{
+		return;
+	}
+
 	_mesh->remove();
 	_mesh = NULL;
 }
@@ -1541,4 +1694,14 @@ void SlipObject::setFocalPoint(vec3 vec)
 	}
 	
 	_focus = vec;
+}
+
+void SlipObject::setPosition(vec3 pos)
+{
+	vec3 p = centroid();
+
+	vec3 diff = vec3_subtract_vec3(pos, p);
+	lockMutex();
+	addToVertices(diff);
+	unlockMutex();
 }
