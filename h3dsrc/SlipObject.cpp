@@ -58,6 +58,7 @@ void SlipObject::addToVertices(vec3 add)
 
 SlipObject::SlipObject()
 {
+	_name = "generic object";
 	_vString = Pencil_vsh();
 	_fString = Pencil_fsh();
 	_remove = false;

@@ -33,9 +33,9 @@ Mesh::Mesh(SlipObject *other) : Icosahedron()
 	triangulate();
 	triangulate();
 	triangulate();
-	std::cout << "Mesh with " << _indices.size() / 3 << " faces." << std::endl;
 	changeToLines();
 	_parent = other;
+	setName("Mesh");
 }
 
 void Mesh::hug(std::vector<Vertex> &vcopy)
