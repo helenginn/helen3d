@@ -26,8 +26,8 @@ class Icosahedron : public SlipObject
 public:
 	Icosahedron();
 
-protected:
 	virtual void triangulate();
+protected:
 	virtual void calculateNormals();
 	virtual void removeUselessVertices(bool flaps = false);
 private:
