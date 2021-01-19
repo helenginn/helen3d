@@ -22,7 +22,7 @@ using namespace Helen3D;
 #include "Icosahedron.h"
 #include <iostream>
 
-Icosahedron::Icosahedron()
+Icosahedron::Icosahedron() : SlipObject()
 {
 	makeIco();
 }
