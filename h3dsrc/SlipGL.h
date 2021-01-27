@@ -178,7 +178,6 @@ protected:
 	QWidget *_p;
 
 	static bool _setup;
-	struct detector *_d;
 };
 
 
