@@ -238,6 +238,7 @@ public:
 	void changeVertexShader(std::string v);
 	void changeFragmentShader(std::string f);
 	virtual void calculateNormals(bool flip = false);
+	void setSelectable(bool selectable);
 protected:
 	bool polygonIncludes(vec3 point, GLuint *trio);
 	bool polygonIncludes(vec3 point, vec3 *vs);
@@ -249,7 +250,6 @@ protected:
 	void addIndex(GLuint i);
 	void addIndices(GLuint i1, GLuint i2, GLuint i3);
 	void calculateNormalsAndCheck();
-	void setSelectable(bool selectable);
 	void fixCentroid(vec3 centre);
 	void bindOneTexture(Picture &pic);
 	void genTextures();
