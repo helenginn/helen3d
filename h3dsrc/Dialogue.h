@@ -20,13 +20,22 @@
 #define __abmap__Dialogue__
 
 #include <QFileDialog>
+#include <QMessageBox>
 
 inline std::string openDialogue(QWidget *w, QString title, QString pattern,
-bool write = false)
+                                bool write = false, bool dir = false)
 {
 	QFileDialog *f = new QFileDialog(w, title, pattern);
 	                                 
-	f->setFileMode(QFileDialog::AnyFile);
+	if (!dir)
+	{
+		f->setFileMode(QFileDialog::AnyFile);
+	}
+	else
+	{
+		f->setFileMode(QFileDialog::Directory);
+	}
+
 	f->setOptions(QFileDialog::DontUseNativeDialog);
 	
 	if (write)
@@ -51,6 +60,45 @@ bool write = false)
 	std::string filename = fileNames[0].toStdString();
 
 	return filename;
+}
+
+inline bool checkFileIsValid(std::string filename, bool write)
+{
+	if (filename.length() == 0)
+	{
+		// no error message
+		return false;
+	}
+
+	FILE *fp = fopen(filename.c_str(), (write ? "w" : "r"));
+	std::string problem;
+
+	if (fp == NULL)
+	{
+		if (errno == EACCES)
+		{
+			problem = "Permission denied";
+		}
+		else
+		{
+			problem = strerror(errno);
+		}
+	}
+	
+	if (fp != NULL)
+	{
+		fclose(fp);
+	}
+	
+	if (problem.length())
+	{
+		QMessageBox msg;
+		msg.setText("Failed to open file: " + QString::fromStdString(problem));
+		msg.exec();
+		return false;
+	}
+	
+	return true;
 }
 
 #endif
