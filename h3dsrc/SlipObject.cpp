@@ -91,6 +91,9 @@ SlipObject::~SlipObject()
 	
 	deletePrograms();
 	deleteVBOBuffers();
+	
+	_vertices.clear();
+	_indices.clear();
 }
 
 GLuint SlipObject::addShaderFromString(GLuint program, GLenum type, 
