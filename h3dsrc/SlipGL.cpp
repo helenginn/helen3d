@@ -26,6 +26,7 @@
 #include <QTimer>
 #include <iostream>
 #include <iomanip>
+#include <QImageWriter>
 
 #define MOUSE_SENSITIVITY 500
 
@@ -569,3 +570,9 @@ bool SlipGL::checkErrors(std::string what)
 	return (err != 0);
 }
 
+void SlipGL::saveImage(std::string filename)
+{
+	QImage image = grabFramebuffer();
+	QImageWriter writer(QString::fromStdString(filename));
+	writer.write(image);
+}

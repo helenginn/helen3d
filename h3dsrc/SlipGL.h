@@ -87,6 +87,8 @@ public:
 		return _proj;
 	}
 
+	void saveImage(std::string filename);
+
 	vec3 transformPosByModel(vec3 pos)
 	{
 		vec3 newPos = mat4x4_mult_vec(_model, pos);
