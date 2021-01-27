@@ -251,17 +251,23 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f,
 	}
 }
 
+void SlipObject::genTextures()
+{
+	if (_textures.size() == 0)
+	{
+		_textures.resize(1);
+		glGenTextures(1, &_textures[0]);
+	}
+}
+
 void SlipObject::bindTextures()
 {
-	_textures.resize(1);
 
-	glDeleteTextures(1, &_textures[0]);
-	glGenTextures(1, &_textures[0]);
 }
 
 void SlipObject::bindOneTexture(Picture &pic)
 {
-	bindTextures();
+	genTextures();
 	glBindTexture(GL_TEXTURE_2D, _textures[0]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pic.width, pic.height, 
 	             0, GL_RGBA, GL_UNSIGNED_BYTE, pic.data);
@@ -375,6 +381,8 @@ void SlipObject::setupVBOBuffers()
 	                      (void *)(10 * sizeof(float)));
 
 	checkErrors("binding attributes");
+	
+	bindTextures();
 
 	if (_textures.size())
 	{

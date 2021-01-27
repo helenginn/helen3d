@@ -252,6 +252,7 @@ protected:
 	void setSelectable(bool selectable);
 	void fixCentroid(vec3 centre);
 	void bindOneTexture(Picture &pic);
+	void genTextures();
 	virtual void bindTextures();
 	
 	virtual void extraUniforms() {};
@@ -300,6 +301,7 @@ protected:
 	mat4x4 _model;
 	mat4x4 _proj;
 	mat4x4 _unproj;
+	std::vector<GLuint> _textures;
 private:
 	GLuint addShaderFromString(GLuint program, GLenum type, std::string str);
 	void rebindVBOBuffers();
@@ -319,7 +321,6 @@ private:
 	GLuint _uModel;
 	GLuint _uProj;
 	GLuint _uTime;
-	std::vector<GLuint> _textures;
 	std::vector<IndexTrio> _temp; // stores with model mat
 	std::string _name;
 	Mesh *_mesh;
