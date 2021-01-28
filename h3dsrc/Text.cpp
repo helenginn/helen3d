@@ -52,7 +52,7 @@ void Text::prepare()
 	QFont font("Sans Serif", _size);
 	QFontMetrics fm(font);
 	float drawHeight = fm.height();
-	float width = fm.horizontalAdvance(str);
+	float width = fm.width(str);
 	_width = width * 1.2;
 	_height = drawHeight * 1.5;
 
