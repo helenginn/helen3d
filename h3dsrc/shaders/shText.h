@@ -22,7 +22,7 @@ inline std::string vText()
 	"void main()\n"\
 	"{\n"\
 	"    vec4 pos = vec4(position[0], position[1], position[2], 1.0);\n"\
-	"    vPos = projection * model * pos;\n"\
+	"    vPos = model * pos;\n"\
 	"    gl_Position = vPos;\n"\
 	"	 vColor = color;\n"\
 	"	 vOffset = normal;\n"\
@@ -43,6 +43,8 @@ inline std::string gText()
 	"in vec3 vOffset[];\n"\
 	"in vec2 dims[];\n"\
 	"\n"\
+	"uniform mat4 projection;\n"\
+	"\n"\
 	"out vec2 fTex;\n"\
 	"out vec4 fColor;\n"\
 	"\n"\
@@ -57,22 +59,28 @@ inline std::string gText()
 	"	 fColor = vColor[0];\n"\
 	"\n"\
 	"	 fTex = vec2(0., 1.);\n"\
-	"    gl_Position = gl0 + vec4(-width+x, -height+y, depth, 0.0); \n"\
+	"    vec4 pos = gl0 + vec4(-width+x, -height+y, depth, 0.0); \n"\
+	"    gl_Position = projection * pos;\n"\
     "    EmitVertex();\n"\
 	"	 fTex = vec2(1., 1.);\n"\
-	"    gl_Position = gl0 + vec4(+width+x, -height+y, depth, 0.0); \n"\
+	"    pos = gl0 + vec4(+width+x, -height+y, depth, 0.0); \n"\
+	"    gl_Position = projection * pos;\n"\
     "    EmitVertex();\n"\
 	"	 fTex = vec2(0., 0.);\n"\
-	"    gl_Position = gl0 + vec4(-width+x, +height+y, depth, 0.0); \n"\
+	"    pos = gl0 + vec4(-width+x, +height+y, depth, 0.0); \n"\
+	"    gl_Position = projection * pos;\n"\
     "    EmitVertex();\n"\
 	"	 fTex = vec2(1., 1.);\n"\
-	"    gl_Position = gl0 + vec4(+width+x, -height+y, depth, 0.0); \n"\
+	"    pos = gl0 + vec4(+width+x, -height+y, depth, 0.0); \n"\
+	"    gl_Position = projection * pos;\n"\
     "    EmitVertex();\n"\
 	"	 fTex = vec2(0., 0.);\n"\
-	"    gl_Position = gl0 + vec4(-width+x, +height+y, depth, 0.0); \n"\
+	"    pos = gl0 + vec4(-width+x, +height+y, depth, 0.0); \n"\
+	"    gl_Position = projection * pos;\n"\
     "    EmitVertex();\n"\
 	"	 fTex = vec2(1., 0.);\n"\
-	"    gl_Position = gl0 + vec4(+width+x, +height+y, depth, 0.0); \n"\
+	"    pos = gl0 + vec4(+width+x, +height+y, depth, 0.0); \n"\
+	"    gl_Position = projection * pos;\n"\
     "    EmitVertex();\n"\
 	"    \n"\
 	"}";

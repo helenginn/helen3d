@@ -46,7 +46,7 @@ void Text::prepare()
 		return;
 	}
 	
-	const float scale = 0.1;
+	const float scale = 0.01;
 
 	QString str = QString::fromStdString(" " + _text);
 	QFont font("Sans Serif", _size);
