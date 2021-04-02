@@ -16,8 +16,12 @@
 // 
 // Please email: vagabond @ hginn.co.uk for more details.
 
+#define SHADOW_DIM 2048
+
 #include "SlipGL.h"
+#include "Quad.h"
 #include "SlipObject.h"
+#include "shaders/shShadow.h"
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QMouseEvent>
@@ -66,7 +70,20 @@ void SlipGL::setBackground(double r, double g, double b, double a)
 
 SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 {
-	_dbCount = 0;
+	_quad = NULL;
+	_shadowing = false;
+	_shadowProgram = 0;
+	_depthMap = 0;
+	_depthFbo = 0;
+	_sceneMapCount = 0;
+	memset(_sceneMap, '\0', sizeof(GLuint) * 8);
+	memset(_pingPongMap, '\0', sizeof(GLuint) * 2);
+	memset(_pingPongFbo, '\0', sizeof(GLuint) * 2);
+	_sceneFbo = 0;
+	_sceneDepth = 0;
+	_wO = 0;
+	_hO = 0;
+
 	_acceptsFocus = true;
 	_shiftPressed = false;
 	_controlPressed = false;
@@ -230,65 +247,220 @@ void SlipGL::initialisePrograms()
 	}
 }
 
-void SlipGL::resizeDepthBuffers(int w, int h)
+void SlipGL::preparePingPongBuffers(int w_over, int h_over)
 {
-	for (size_t i = 0; i < _dbCount; i++)
+	glGenFramebuffers(2, _pingPongFbo);
+	glGenTextures(2, _pingPongMap);
+
+	int ratio = QApplication::desktop()->devicePixelRatio();
+	int w = width() * ratio;
+	int h = height() * ratio;
+	
+	if (w_over > 0 && h_over > 0)
 	{
-		glBindRenderbuffer(GL_RENDERBUFFER, _depthRbo[i]);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		w = w_over;
+		h = h_over;
 	}
+
+	_wO = w;
+	_hO = h;
+
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, _pingPongFbo[i]);
+		glBindTexture(GL_TEXTURE_2D, _pingPongMap[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h,
+		             0, GL_RGBA, GL_FLOAT, NULL);
+		std::cout << "Dimensions: " << w << " " << h << std::endl;
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
+		                       GL_TEXTURE_2D, _pingPongMap[i], 0);
+		
+		GLenum result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (result != GL_FRAMEBUFFER_COMPLETE)
+		{
+			std::cout << "Incomplete frame buffer" << std::endl;
+			
+			switch (result)
+			{
+				case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+				std::cout << "incomplete attachment" << std::endl;
+				break;
+				case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+				std::cout << "incomplete missing attachment" << std::endl;
+				break;
+				case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+				std::cout << "incomplete draw buffer" << std::endl;
+				break;
+				case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+				std::cout << "incomplete read buffer" << std::endl;
+				break;
+				case GL_FRAMEBUFFER_UNSUPPORTED:
+				std::cout << "unsupported format combo" << std::endl;
+				break;
+				case GL_FRAMEBUFFER_UNDEFINED:
+				std::cout << "buffer undefined" << std::endl;
+				break;
+				case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+				std::cout << "incomplete multisample" << std::endl;
+				break;
+				case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+				std::cout << "incomplete layer targets" << std::endl;
+				break;
+				
+				default:
+				std::cout << "Something else " << result << std::endl;
+				break;
+			}
+		}
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void SlipGL::prepareDepthBuffer(size_t count)
+void SlipGL::resizeTextures(int w_over, int h_over)
 {
-	_dbCount = count;
+	int ratio = QApplication::desktop()->devicePixelRatio();
+	int w = width() * ratio;
+	int h = height() * ratio;
+	
+	if (w_over > 0 && h_over > 0)
+	{
+		w = w_over;
+		h = h_over;
+	}
 
-	glGenFramebuffers(count, _depthFbo);
-	glGenRenderbuffers(count, _depthRbo);
+	glBindTexture(GL_TEXTURE_2D, _sceneDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 
+	             w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
+	for (size_t i = 0; i < _sceneMapCount; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, _sceneMap[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 
+		             w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+	}
+	
+	if (_pingPongFbo[0] > 0)
+	{
+		for (size_t i = 0; i < 2; i++)
+		{
+			glBindTexture(GL_TEXTURE_2D, _pingPongMap[i]);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 
+			             w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+		}
+	}
+
+}
+
+void SlipGL::prepareRenderToTexture(size_t count)
+{
+	glGenFramebuffers(1, &_sceneFbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _sceneFbo);
+
+	glGenTextures(count, _sceneMap);
+	glGenTextures(1, &_sceneDepth);
+
+	_sceneMapCount = count;
+
+	int ratio = QApplication::desktop()->devicePixelRatio();
+	int w = width() * ratio;
+	int h = height() * ratio;
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, _sceneDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 
+	             w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, 
+	                       GL_TEXTURE_2D, _sceneDepth, 0);
+
+	unsigned int attachments[8];
+	
 	for (size_t i = 0; i < count; i++)
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, _depthFbo[i]);
+		glActiveTexture(GL_TEXTURE0 + i + 1);
+		glBindTexture(GL_TEXTURE_2D, _sceneMap[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 
+		             w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		checkErrors("Making framebuffer");
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, 
+		                       GL_TEXTURE_2D, _sceneMap[i], 0);
+		checkErrors("Binding texture");
 		
-		int w = width(); int h = height();
-		int ratio = QApplication::desktop()->devicePixelRatio();
-		w *= ratio; h *= ratio;
-
-		glBindRenderbuffer(GL_RENDERBUFFER, _depthRbo[i]);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-		                          GL_RENDERBUFFER, _depthRbo[i]);
-
-		glClear(GL_DEPTH_BUFFER_BIT);
-
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		{
-			std::cout << "Problem with frame buffer!" << std::endl;
-		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		attachments[i] = GL_COLOR_ATTACHMENT0 + i;
 	}
+	
+	glDrawBuffers(count, attachments);  
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	_quad = new Quad();
 }
 
-void SlipGL::paintGL()
+void SlipGL::prepareShadowBuffer()
 {
-	checkErrors("before paintGL");
-	updateCamera();
-	if (_paused)
-	{
-		return;
-	}
+	glGenFramebuffers(1, &_depthFbo);
+	glGenTextures(1, &_depthMap);
+	glBindTexture(GL_TEXTURE_2D, _depthMap);
 
-	glClearColor(_r, _g, _b, _a);
-	checkErrors("clear color");
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	checkErrors("clear buffer bits");
+	int w = SHADOW_DIM; int h = SHADOW_DIM;
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 
+	             w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);  
+
+	glBindFramebuffer(GL_FRAMEBUFFER, _depthFbo);
+	checkErrors("Making framebuffer");
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, 
+	                       GL_TEXTURE_2D, _depthMap, 0);
+	checkErrors("Binding texture");
+	GLenum none = GL_NONE;
+	glDrawBuffers(1, &none);
+	glReadBuffer(GL_NONE);
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	shadowProgram();
+}
+
+void SlipGL::renderShadows()
+{
+	_shadowing = true;
+	int w = SHADOW_DIM; int h = SHADOW_DIM;
+	glViewport(0, 0, w, h);
+	glBindFramebuffer(GL_FRAMEBUFFER, _depthFbo);
+    glClear(GL_DEPTH_BUFFER_BIT);
+	mat4x4 model = _model;
+	mat4x4 proj = _proj;
+    changeProjectionForLight(0);
+    renderScene();
+	_model = model;
+	_proj = proj;
+
+	int ratio = QApplication::desktop()->devicePixelRatio();
+	glViewport(0, 0, width() * ratio, height() * ratio);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClear(GL_DEPTH_BUFFER_BIT);
+	_shadowing = false;
+}
+
+void SlipGL::renderScene()
+{
 	for (unsigned int i = 0; i < _objects.size(); i++)
 	{
 		if (_objects[i]->shouldRemove())
@@ -303,6 +475,55 @@ void SlipGL::paintGL()
 		_objects[i]->setUnproj(_unproj);
 		_objects[i]->render(this);
 	}
+}
+
+void SlipGL::paintGL()
+{
+	checkErrors("before paintGL");
+	updateCamera();
+	if (_paused)
+	{
+		return;
+	}
+	
+	if (_depthMap > 0)
+	{
+		renderShadows();
+	}
+	
+	if (_sceneFbo > 0)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, _sceneFbo);
+	}
+	
+	glClearColor(_r, _g, _b, _a);
+	checkErrors("clear color");
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	checkErrors("clear buffer bits");
+
+	renderScene();
+	
+	if (_sceneFbo > 0)
+	{
+//		glViewport(0, 0, _wO, _hO);
+
+		if (_pingPongFbo > 0)
+		{
+			specialQuadRender();
+		}
+		else
+		{
+			quad()->setTexture(1, _sceneMap[0]);
+		}
+
+		int ratio = QApplication::desktop()->devicePixelRatio();
+//		glViewport(0, 0, width() * ratio, height() * ratio);
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+		renderQuad();
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void SlipGL::updateCamera()
@@ -360,9 +581,7 @@ void SlipGL::updateProjection(double side)
 
 void SlipGL::resizeGL(int w, int h)
 {
-	int ratio = QApplication::desktop()->devicePixelRatio();
 	updateProjection();
-	resizeDepthBuffers(w * ratio, h * ratio);
 }
 
 void SlipGL::setFocalPoint(vec3 pos)
@@ -495,36 +714,6 @@ void SlipGL::convertCoords(double *x, double *y)
 	*y =  - (2 * *y / h - 1.0);
 }
 
-void SlipGL::copyDefaultToOffscreenDepthBuffer(int which)
-{
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, defaultFramebufferObject());
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _depthFbo[which]);
-
-	int ratio = QApplication::desktop()->devicePixelRatio();
-
-	glBlitFramebuffer(0, 0, ratio * width(), ratio * height(),
-	                  0, 0, ratio * width(), ratio * height(),
-	                  GL_DEPTH_BUFFER_BIT,
-	                  GL_NEAREST);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void SlipGL::copyOffscreenDepthBufferToDefault(int which)
-{
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, _depthFbo[which]);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, defaultFramebufferObject());
-
-	int ratio = QApplication::desktop()->devicePixelRatio();
-
-	glBlitFramebuffer(0, 0, ratio * width(), ratio * height(),
-	                  0, 0, ratio * width(), ratio * height(),
-	                  GL_DEPTH_BUFFER_BIT,
-	                  GL_NEAREST);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
 bool SlipGL::checkErrors(std::string what)
 {
 	GLenum err = glGetError();
@@ -575,4 +764,62 @@ void SlipGL::saveImage(std::string filename)
 	QImage image = grabFramebuffer();
 	QImageWriter writer(QString::fromStdString(filename));
 	writer.write(image);
+}
+
+void SlipGL::shadowProgram()
+{
+	if (_shadowProgram != 0)
+	{
+		return;
+	}
+	
+	std::string v = vShadow();
+	std::string f = fShadow();
+	
+	_shadowObj = new SlipObject();
+	_shadowObj->initialisePrograms(&v, &f);
+
+	_shadowProgram = _shadowObj->getProgram();
+}
+
+GLuint SlipGL::getOverrideProgram()
+{
+	if (_shadowing)
+	{
+		return _shadowProgram;
+	}
+	
+	return 0;
+}
+
+void SlipGL::renderQuad()
+{
+	glClearColor(_r, _g, _b, _a);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	_quad->render(this);
+}
+
+void SlipGL::specialQuadRender()
+{
+	int amount = 2;
+	int mode = 0;
+	float threshold = 0.3;
+	_quad->setTexture(0, _sceneMap[0]);
+
+	for (unsigned int i = 0; i < amount; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, _pingPongFbo[mode]); 
+		checkErrors("ping pong frame bind");
+		_quad->setThreshold(threshold);
+		_quad->setMode(mode);
+		_quad->setTexture(1, (i == 0) ?  _sceneMap[1] : _pingPongMap[!mode]); 
+		renderQuad();
+		checkErrors("rendered quad");
+		mode = !mode;
+	}
+
+	_quad->setMode(2);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+	_quad->setTexture(0, _sceneMap[0]); 
+	_quad->setTexture(1, _pingPongMap[mode]); 
 }

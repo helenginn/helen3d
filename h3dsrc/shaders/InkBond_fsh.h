@@ -34,7 +34,7 @@ inline std::string InkBond_fsh()
 	"		discard;\n"\
 	"	}\n"\
 	"   float transparency = (vPos[2] - min_distance) / (max_distance - min_distance);\n"\
-	"	transparency = max(transparency, 0.0);\n"\
+	"	transparency = max(transparency, 0.3);\n"\
 	"	transparency = min(transparency, 1.0);\n"\
 	"   gl_FragColor[3] = 1. - transparency;\n"\
 	"	if (focus[2] < -120.)\n"\

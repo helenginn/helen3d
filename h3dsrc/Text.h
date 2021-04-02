@@ -29,6 +29,8 @@ class Text : public SlipObject
 public:
 	Text();
 	
+	virtual ~Text();
+	
 	void setModelPos(vec3 v)
 	{
 		_pos = v;

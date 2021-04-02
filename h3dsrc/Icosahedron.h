@@ -21,7 +21,7 @@
 
 #include "SlipObject.h"
 
-class Icosahedron : public SlipObject
+class Icosahedron : public virtual SlipObject
 {
 public:
 	Icosahedron();

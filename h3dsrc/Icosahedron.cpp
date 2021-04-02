@@ -21,9 +21,13 @@ using namespace Helen3D;
 
 #include "Icosahedron.h"
 #include <iostream>
+#include "shaders/vStructure.h"
+#include "shaders/fStructure.h"
 
 Icosahedron::Icosahedron() : SlipObject()
 {
+	_vString = Structure_vsh();
+	_fString = Structure_fsh();
 	makeIco();
 }
 

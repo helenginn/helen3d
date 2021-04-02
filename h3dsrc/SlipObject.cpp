@@ -35,6 +35,8 @@ using namespace Helen3D;
 #include "shaders/fImage.h"
 #include "shaders/fWipe.h"
 
+double SlipObject::_selectionResize = 1.3;
+
 void SlipObject::addToVertexArray(vec3 add, std::vector<Vertex> *vs)
 {
 	for (size_t i = 0; i < vs->size(); i++)
@@ -54,10 +56,17 @@ void SlipObject::addToVertices(vec3 add)
 
 	addToVertexArray(add, &_vertices);
 	addToVertexArray(add, &_unselectedVertices);
+	positionChanged();
 }
 
 SlipObject::SlipObject()
 {
+	_handleOwnTextures = false;
+	_normals = NULL;
+	_gl = NULL;
+	_is2D = true;
+	_textured = false;
+	_texternal = false;
 	_name = "generic object";
 	_meshDot = 0.9;
 	_vString = Pencil_vsh();
@@ -66,9 +75,8 @@ SlipObject::SlipObject()
 	_mesh = NULL;
 	_renderType = GL_TRIANGLES;
 	_program = 0;
+	_usingProgram = 0;
 	_backToFront = false;
-	_bufferID = 0;
-	_bElement = 0;
 	_uModel = 0;
 	_extra = false;
 	_focus = empty_vec3();
@@ -91,9 +99,18 @@ SlipObject::~SlipObject()
 	
 	deletePrograms();
 	deleteVBOBuffers();
+	deleteTextures();
 	
+	
+	_vString = "";
+	_fString = "";
+	_gString = "";
+	_unselectedVertices.clear();
 	_vertices.clear();
 	_indices.clear();
+	std::vector<Vertex>().swap(_unselectedVertices);
+	std::vector<Vertex>().swap(_vertices);
+	std::vector<GLuint>().swap(_indices);
 }
 
 GLuint SlipObject::addShaderFromString(GLuint program, GLenum type, 
@@ -167,6 +184,11 @@ void SlipObject::deletePrograms()
 	_program = 0;
 }
 
+void SlipObject::rebindToProgram()
+{
+
+}
+
 void SlipObject::initialisePrograms(std::string *v, std::string *f,
                                     std::string *g)
 {
@@ -196,6 +218,7 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f,
 
 	/* create program object and attach shaders */
 	_program = glCreateProgram();
+	checkErrors("create new program");
 
 	addShaderFromString(_program, GL_VERTEX_SHADER, *v);
 	checkErrors("adding vshader");
@@ -222,7 +245,7 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f,
 		glBindAttribLocation(_program, 3, "extra");
 	}
 
-	if (_textures.size())
+	if (_textured || _textures.size())
 	{
 		glBindAttribLocation(_program, 4, "tex");
 	}
@@ -260,9 +283,45 @@ void SlipObject::genTextures()
 	}
 }
 
+void SlipObject::deleteTextures()
+{
+	if (_texternal || _textures.size() == 0)
+	{
+		return;
+	}
+
+	glDeleteTextures(_textures.size(), &_textures[0]);
+	_textures.clear();
+}
+
 void SlipObject::bindTextures()
 {
 
+}
+
+void SlipObject::bindOneTexture(QImage *image, bool alpha)
+{
+	genTextures();
+
+	glBindTexture(GL_TEXTURE_2D, _textures[0]);
+	
+	GLint intform = GL_RGB8;
+	GLenum myform = GL_RGB;
+	
+	if (alpha)
+	{
+		intform = GL_RGBA8;
+		myform = GL_RGBA;
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, intform, image->width(), image->height(),
+	             0, myform, GL_UNSIGNED_BYTE, image->constBits());
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+	checkErrors("binding text-ure");
 }
 
 void SlipObject::bindOneTexture(Picture &pic)
@@ -283,7 +342,7 @@ void SlipObject::unbindVBOBuffers()
 {
 	if (_textures.size())
 	{
-		glDisableVertexAttribArray(4); 
+//		glDisableVertexAttribArray(4); 
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -295,11 +354,13 @@ void SlipObject::unbindVBOBuffers()
 void SlipObject::deleteVBOBuffers()
 {
 	std::map<QOpenGLContext *, GLuint>::iterator it;
+	/*
 	for (it = _vaoMap.begin(); it != _vaoMap.end(); it++)
 	{
 		GLuint vao = it->second;
 //		glDeleteVertexArrays(1, &vao);
 	}
+	*/
 }
 
 void SlipObject::rebindVBOBuffers()
@@ -316,11 +377,11 @@ void SlipObject::rebindVBOBuffers()
 
 	checkErrors("vertex array attribute reenabling");
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _bElement);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _bElements[_usingProgram]);
 	checkErrors("index array binding");
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, iSize(), iPointer(), GL_STATIC_DRAW);
 	checkErrors("index array buffering");
-	glBindBuffer(GL_ARRAY_BUFFER, _bufferID);
+	glBindBuffer(GL_ARRAY_BUFFER, _bVertices[_usingProgram]);
 	checkErrors("vbo binding");
 	glBufferData(GL_ARRAY_BUFFER, vSize(), vPointer(), GL_STATIC_DRAW);
 	checkErrors("vbo buffering");
@@ -330,15 +391,15 @@ int SlipObject::vaoForContext()
 {
 	QOpenGLContext *c = QOpenGLContext::currentContext();
 	
-	if (_vaoMap.count(c))
+	if (_vaoMap.count(c) && _vaoMap[c].count(_usingProgram))
 	{
-		GLuint vao = _vaoMap[c];
+		GLuint vao = _vaoMap[c][_usingProgram];
 		return vao;
 	}
 	
 	GLuint vao = 0;
 	glGenVertexArrays(1, &vao);
-	_vaoMap[c] = vao;
+	_vaoMap[c][_usingProgram] = vao;
 	setupVBOBuffers();
 	
 	return vao;
@@ -349,11 +410,12 @@ void SlipObject::setupVBOBuffers()
 	int vao = vaoForContext();
 	glBindVertexArray(vao);
 
-	glGenBuffers(1, &_bufferID);
+	GLuint bv = 0;
+	glGenBuffers(1, &bv);
+	_bVertices[_usingProgram] = bv;
 
-	glBindBuffer(GL_ARRAY_BUFFER, _bufferID);
+	glBindBuffer(GL_ARRAY_BUFFER, bv);
 	checkErrors("binding array buffer");
-
 	glBufferData(GL_ARRAY_BUFFER, vSize(), vPointer(), GL_STATIC_DRAW);
 
 	checkErrors("rebuffering data buffer");
@@ -362,6 +424,11 @@ void SlipObject::setupVBOBuffers()
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 	glEnableVertexAttribArray(3);
+
+	if (_textured || _textures.size())
+	{
+		glEnableVertexAttribArray(4); 
+	}
 
 	/* Vertices */
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 
@@ -384,20 +451,17 @@ void SlipObject::setupVBOBuffers()
 	
 	bindTextures();
 
-	if (_textures.size())
+	if (_textured || _textures.size())
 	{
 		glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(14 * sizeof(float)));
 
 		checkErrors("rebinding texture attributes");
 	}
 
-	if (_textures.size())
-	{
-		glEnableVertexAttribArray(4); 
-	}
-
-	glGenBuffers(1, &_bElement);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _bElement);
+	GLuint be = 0;
+	glGenBuffers(1, &be);
+	_bElements[_usingProgram] = be;
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, be);
 	checkErrors("binding element array buffer");
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, iSize(), iPointer(), GL_STATIC_DRAW);
 	checkErrors("rebuffering data element array buffer");
@@ -478,14 +542,24 @@ void SlipObject::render(SlipGL *sender)
 		return;
 	}
 	
+	_gl = sender;
+	
 	if (_program == 0)
 	{
 		initialisePrograms();
-		setupVBOBuffers();
 	}
 	
+	if (_gl->getOverrideProgram() > 0)
+	{
+		_usingProgram = _gl->getOverrideProgram();
+	}
+	else
+	{
+		_usingProgram = _program;
+	}
 
-	glUseProgram(_program);
+	glUseProgram(_usingProgram);
+
 	checkErrors("use program");
 	rebindVBOBuffers();
 	
@@ -493,26 +567,57 @@ void SlipObject::render(SlipGL *sender)
 
 	_model = sender->getModel();
 	const char *uniform_name = "model";
-	_uModel = glGetUniformLocation(_program, uniform_name);
+	_uModel = glGetUniformLocation(_usingProgram, uniform_name);
 	_glModel = mat4x4_transpose(_model);
 	glUniformMatrix4fv(_uModel, 1, GL_FALSE, &_glModel.vals[0]);
+	checkErrors("rebinding model");
 
 	_proj = sender->getProjection();
 	uniform_name = "projection";
-	_uProj = glGetUniformLocation(_program, uniform_name);
+	_uProj = glGetUniformLocation(_usingProgram, uniform_name);
 	_glProj = mat4x4_transpose(_proj);
 	glUniformMatrix4fv(_uProj, 1, GL_FALSE, &_glProj.vals[0]);
+	checkErrors("rebinding projection");
 
 	float time = sender->getTime();
 	uniform_name = "time";
-	_uTime = glGetUniformLocation(_program, uniform_name);
+	_uTime = glGetUniformLocation(_usingProgram, uniform_name);
 	glUniform1f(_uTime, time);
+	checkErrors("rebinding time");
 	
-	extraUniforms();
-
-	if (_textures.size())
+	if (_gl->getOverrideProgram() == 0)
 	{
-		glBindTexture(GL_TEXTURE_2D, _textures[0]);
+		extraUniforms();
+	}
+
+	checkErrors("rebinding extras");
+
+	if ((_textured || _textures.size() > 0) 
+	    && _gl->getOverrideProgram() == 0
+	    && !_handleOwnTextures)
+	{
+		GLuint which = (_is2D ? GL_TEXTURE_2D : GL_TEXTURE_2D_ARRAY);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(which, _textures[0]);
+		GLuint uTex = glGetUniformLocation(_usingProgram, "pic_tex");
+		glUniform1i(uTex, 0);
+	}
+	
+	if (_gl != NULL && _gl->depthMap() > 0 && !_handleOwnTextures
+	    && _gl->getOverrideProgram() == 0)
+	{
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, _gl->depthMap());
+		GLuint uTex = glGetUniformLocation(_usingProgram, "shadow_map");
+		glUniform1i(uTex, 1);
+
+		mat4x4 lightMat = sender->lightMat();
+		uniform_name = "light_mat";
+		GLuint uLight = glGetUniformLocation(_usingProgram, uniform_name);
+		_glLightMat = mat4x4_transpose(lightMat);
+		glUniformMatrix4fv(uLight, 1, GL_FALSE, &_glLightMat.vals[0]);
+		checkErrors("rebinding lights");
+
 	}
 	
 	glDrawElements(_renderType, indexCount(), GL_UNSIGNED_INT, 0);
@@ -573,6 +678,7 @@ void SlipObject::resize(double scale, bool unselected)
 	
 	if (!unselected)
 	{
+		resized(scale);
 		return;
 	}
 	
@@ -702,8 +808,14 @@ void SlipObject::addIndices(GLuint i1, GLuint i2, GLuint i3)
 	_indices.push_back(i3);
 }
 
-void SlipObject::addIndex(GLuint i)
+void SlipObject::addIndex(GLint i)
 {
+	if (i < 0)
+	{
+		_indices.push_back(_vertices.size() + i);
+		return;
+	}
+
 	_indices.push_back(i);
 }
 
@@ -765,9 +877,60 @@ void SlipObject::reorderIndices()
 	}
 }
 
+bool xPolygon(vec3 point, vec3 *vs)
+{
+	bool c = false;
+	
+	for (int i = 0, j = 2; i < 3; j = i++) 
+	{
+		if (((vs[i].z > point.z) != (vs[j].z > point.z))
+		    && (point.y < (vs[j].y - vs[i].y) * (point.z - vs[i].z)
+		    / (vs[j].z - vs[i].z) + vs[i].y)) 
+		{
+			c = !c;
+		}
+	}
+
+	return c;
+}
+
+bool yPolygon(vec3 point, vec3 *vs)
+{
+	bool c = false;
+	
+	for (int i = 0, j = 2; i < 3; j = i++) 
+	{
+		if (((vs[i].z > point.z) != (vs[j].z > point.z))
+		    && (point.x < (vs[j].x - vs[i].x) * (point.z - vs[i].z)
+		    / (vs[j].z - vs[i].z) + vs[i].x)) 
+		{
+			c = !c;
+		}
+	}
+
+	return c;
+}
+
+bool zPolygon(vec3 point, vec3 *vs)
+{
+	bool c = false;
+	
+	for (int i = 0, j = 2; i < 3; j = i++) 
+	{
+		if (((vs[i].y > point.y) != (vs[j].y > point.y))
+		    && (point.x < (vs[j].x - vs[i].x) * (point.y - vs[i].y)
+		    / (vs[j].y - vs[i].y) + vs[i].x)) 
+		{
+			c = !c;
+		}
+	}
+
+	return c;
+}
+
 bool SlipObject::pointInside(vec3 point)
 {
-	if (_mesh != NULL)
+	if (hasMesh())
 	{
 		return _mesh->pointInside(point);
 	}
@@ -807,7 +970,12 @@ bool SlipObject::pointInside(vec3 point)
 			continue;
 		}
 
-		bool inside = polygonIncludes(ray, ptr);
+		vec3 vs[3];
+		vs[0] = vec_from_pos(_vertices[ptr[0]].pos);
+		vs[1] = vec_from_pos(_vertices[ptr[1]].pos);
+		vs[2] = vec_from_pos(_vertices[ptr[2]].pos);
+		bool inside = zPolygon(ray, (vec3 *)vs);
+
 		if (inside)
 		{
 			c = !c;
@@ -815,6 +983,27 @@ bool SlipObject::pointInside(vec3 point)
 	}
 
 	return c;
+}
+
+vec3 SlipObject::closestRayTraceToPlane(vec3 point, GLuint *trio)
+{
+	vec3 vs[3];
+	vs[0] = vec_from_pos(_vertices[trio[0]].pos); 
+	vs[1] = vec_from_pos(_vertices[trio[1]].pos);
+	vs[2] = vec_from_pos(_vertices[trio[2]].pos);
+
+	vec3 diff1 = vec3_subtract_vec3(vs[1], vs[0]);
+	vec3 diff2 = vec3_subtract_vec3(vs[2], vs[0]);
+	vec3 cross = vec3_cross_vec3(diff1, diff2);
+	vec3_set_length(&cross, 1); 
+	
+	vec3 subtract = vec3_subtract_vec3(vs[0], point);
+	double d = vec3_dot_vec3(subtract, cross);
+	
+	vec3_mult(&cross, d);
+	vec3_add_to_vec3(&point, cross);
+	
+	return point;
 }
 
 vec3 SlipObject::rayTraceToPlane(vec3 point, GLuint *trio, vec3 dir,
@@ -842,21 +1031,14 @@ vec3 SlipObject::rayTraceToPlane(vec3 point, GLuint *trio, vec3 dir,
 	return point;
 }
 
-bool SlipObject::polygonIncludes(vec3 point, vec3 *vs)
+bool SlipObject::polygonIncludesY(vec3 point, GLuint *trio)
 {
-	bool c = false;
-	
-	for (int i = 0, j = 2; i < 3; j = i++) 
-	{
-		if (((vs[i].y > point.y) != (vs[j].y > point.y))
-		    && (point.x < (vs[j].x - vs[i].x) * (point.y - vs[i].y)
-		    / (vs[j].y - vs[i].y) + vs[i].x)) 
-		{
-			c = !c;
-		}
-	}
+	vec3 vs[3];
+	vs[0] = vec_from_pos(_vertices[trio[0]].pos);
+	vs[1] = vec_from_pos(_vertices[trio[1]].pos);
+	vs[2] = vec_from_pos(_vertices[trio[2]].pos);
 
-	return c;
+	return yPolygon(point, (vec3 *)vs);
 }
 
 bool SlipObject::polygonIncludes(vec3 point, GLuint *trio)
@@ -866,7 +1048,30 @@ bool SlipObject::polygonIncludes(vec3 point, GLuint *trio)
 	vs[1] = vec_from_pos(_vertices[trio[1]].pos);
 	vs[2] = vec_from_pos(_vertices[trio[2]].pos);
 
-	return polygonIncludes(point, (vec3 *)vs);
+	double xmin = std::min(std::min(vs[0].x, vs[1].x), vs[2].x);
+	double ymin = std::min(std::min(vs[0].y, vs[1].y), vs[2].y);
+	double zmin = std::min(std::min(vs[0].z, vs[1].z), vs[2].z);
+	
+	double xmax = std::max(std::max(vs[0].x, vs[1].x), vs[2].x);
+	double ymax = std::max(std::max(vs[0].y, vs[1].y), vs[2].y);
+	double zmax = std::max(std::max(vs[0].z, vs[1].z), vs[2].z);
+	
+	double zdiff = zmax - zmin;
+	double ydiff = ymax - ymin;
+	double xdiff = xmax - xmin;
+	
+	if (zdiff < ydiff && zdiff < xdiff)
+	{
+		return zPolygon(point, (vec3 *)vs);
+	}
+	else if (ydiff < zdiff && ydiff < xdiff)
+	{
+		return yPolygon(point, (vec3 *)vs);
+	}
+	else
+	{
+		return xPolygon(point, (vec3 *)vs);
+	}
 }
 
 vec3 SlipObject::nearestVertexNearNormal(vec3 pos, vec3 normal,
@@ -879,6 +1084,7 @@ vec3 SlipObject::nearestVertexNearNormal(vec3 pos, vec3 normal,
 	for (size_t i = 0; i < _vertices.size(); i++)
 	{
 		Vertex v = _vertices[i];
+
 		vec3 diff = make_vec3(pos.x - v.pos[0],
 		                      pos.y - v.pos[1],
 		                      pos.z - v.pos[2]);
@@ -1006,6 +1212,49 @@ void SlipObject::changeMidPoint(double x, double y)
 	
 }
 
+double SlipObject::intersects(vec3 pos, vec3 dir)
+{
+	double closest = FLT_MAX;
+
+	for (size_t i = 0; i < _indices.size(); i += 3)
+	{
+		bool back = false;
+		vec3 intersect = rayTraceToPlane(pos, &_indices[i], dir, &back);
+		
+		if (back)
+		{
+			continue;
+		}
+
+		bool passes = polygonIncludes(intersect, &_indices[i]);
+
+		if (passes)
+		{
+			vec3 a = vec_from_pos(_vertices[_indices[i+2]].pos);
+			vec3 b = vec_from_pos(_vertices[_indices[i+1]].pos);
+			vec3 c = vec_from_pos(_vertices[_indices[i]].pos);
+			vec3_add_to_vec3(&c, a);
+			vec3_add_to_vec3(&c, b);
+			vec3_mult(&c, 1./3.);
+			vec3_subtract_from_vec3(&c, pos);
+
+			double l = vec3_length(c);
+			
+			if (l < closest)
+			{
+				closest = l;
+			}
+		}
+	}
+	
+	if (closest == FLT_MAX)
+	{
+		return -1;
+	}
+	
+	return closest;
+}
+
 bool SlipObject::intersectsPolygon(double x, double y, double *z)
 {
 	vec3 target = make_vec3(x, y, 0);
@@ -1041,7 +1290,7 @@ bool SlipObject::intersectsPolygon(double x, double y, double *z)
 			}
 		}
 		
-		bool passes = polygonIncludes(target, projs);
+		bool passes = zPolygon(target, projs);
 
 		if (passes)
 		{
@@ -1142,6 +1391,16 @@ void SlipObject::calculateNormalsAndCheck()
 	calculateNormals();
 }
 
+void SlipObject::flip()
+{
+	for (size_t i = 0; i < _vertices.size(); i++)
+	{
+		_vertices[i].normal[0] *= -1;
+		_vertices[i].normal[1] *= -1;
+		_vertices[i].normal[2] *= -1;
+	}
+}
+
 void SlipObject::calculateNormals(bool flip)
 {
 	for (size_t i = 0; i < _vertices.size(); i++)
@@ -1163,6 +1422,11 @@ void SlipObject::calculateNormals(bool flip)
 		vec3 cross = vec3_cross_vec3(diff31, diff21);
 		vec3_set_length(&cross, 1);
 		
+		if (cross.x != cross.x)
+		{
+			continue;
+		}
+		
 		/* Normals */					
 		for (int j = 0; j < 3; j++)
 		{
@@ -1176,6 +1440,7 @@ void SlipObject::calculateNormals(bool flip)
 	{
 		vec3 norm = vec_from_pos(_vertices[i].normal);
 		vec3_set_length(&norm, 1);
+
 		pos_from_vec(_vertices[i].normal, norm);
 	}
 }
@@ -1219,11 +1484,11 @@ void SlipObject::setSelected(bool selected)
 {
 	if (!_selected && selected)
 	{
-		recolour(0, 0, 1);
+		recolour(0.7, 0.7, 1);
 		
 		if (!_highlighted)
 		{
-			resize(1.3);
+			resize(_selectionResize);
 		}
 	}
 	
@@ -1236,25 +1501,25 @@ void SlipObject::setSelected(bool selected)
 	_selected = selected;
 }
 
-bool SlipObject::collapseCommonVertices(bool quick)
+bool SlipObject::collapseCommonVertices(int quick, double thresh)
 {
 	std::cout << "Collapsing common vertices..." << std::endl;
 	size_t prior = _vertices.size();
 
 	for (size_t i = 0; i < _vertices.size(); i++)
 	{
-		size_t target = (quick ? i + 1000 : _vertices.size());
-		for (size_t j = i + 1; j < target && j < _vertices.size(); j++)
+		size_t target = (quick > 0 ? quick : _vertices.size());
+		for (size_t j = i + 1; j < i + target + 1 && j < _vertices.size(); j++)
 		{
-			if (fabs(_vertices[i].pos[0] - _vertices[j].pos[0]) > 1e-6)
+			if (fabs(_vertices[i].pos[0] - _vertices[j].pos[0]) > thresh)
 			{
 				continue;
 			}
-			if (fabs(_vertices[i].pos[1] - _vertices[j].pos[1]) > 1e-6)
+			if (fabs(_vertices[i].pos[1] - _vertices[j].pos[1]) > thresh)
 			{
 				continue;
 			}
-			if (fabs(_vertices[i].pos[2] - _vertices[j].pos[2]) > 1e-6)
+			if (fabs(_vertices[i].pos[2] - _vertices[j].pos[2]) > thresh)
 			{
 				continue;
 			}
@@ -1272,35 +1537,12 @@ bool SlipObject::collapseCommonVertices(bool quick)
 	
 	removeUnusedVertices();
 
-	/*
-	std::vector<Vertex> tmps;
-
-	for (size_t i = 0; i < _vertices.size(); i++)
-	{
-		if (_vertices[i].pos[0] == _vertices[i].pos[0])
-		{
-			tmps.push_back(_vertices[i]);
-			continue;
-		}
-		
-		for (size_t k = 0; k < _indices.size(); k++)
-		{
-			if (_indices[k] > tmps.size() - 1)
-			{
-				_indices[k]--;
-			}
-		}
-	}
-	
-	_vertices = tmps;
-	*/
-
 	size_t post = _vertices.size();
 	
 	std::cout << "From " << prior << " to " << post << " vertices." << std::endl;
 	std::cout << _indices.size() / 3 << " faces." << std::endl;
 	
-	calculateNormals();
+//	calculateNormals();
 	
 	return (post < prior);
 }
@@ -1320,15 +1562,20 @@ void SlipObject::writeObjFile(std::string filename)
 		file << "vn " << _vertices[i].normal[0] << " " <<
 		_vertices[i].normal[1] << " " <<
 		_vertices[i].normal[2] << std::endl;
+		file << "vt " << _vertices[i].tex[0] << " " <<
+		_vertices[i].tex[1] << std::endl;
 	}
 	
 	file << std::endl;
 
 	for (size_t k = 0; k < _indices.size(); k += 3)
 	{
-		file << "f " << _indices[k] + 1 << "//" << _indices[k] + 1
-		<< " " << _indices[k + 1] + 1 << "//" << _indices[k + 1] + 1
-		<< " " << _indices[k + 2] + 1 << "//" << _indices[k + 2] + 1 << std::endl;
+		file << "f " << _indices[k] + 1 << "/" << 
+		_indices[k + 0] + 1 << "/" << _indices[k + 0] + 1
+		<< " " << _indices[k + 1] + 1 << "/" << 
+		_indices[k + 1] + 1 << "/" << _indices[k + 1] + 1
+		<< " " << _indices[k + 2] + 1 << "/" <<
+		_indices[k + 2] + 1 << "/" << _indices[k + 2] + 1 << std::endl;
 	}
 	
 	file << std::endl;
@@ -1490,10 +1737,7 @@ void SlipObject::triangulate()
 		return;
 	}
 	
-	/*
-	cacheTriangulate();
-	return;
-	*/
+	lockMutex();
 
 	std::map<std::pair<GLuint, GLuint>, GLuint> lines;
 	std::map<std::pair<GLuint, GLuint>, GLuint>::iterator linesit;
@@ -1523,12 +1767,16 @@ void SlipObject::triangulate()
 		
 		vec3 v1 = vec_from_pos(_vertices[front].pos);
 		vec3 v2 = vec_from_pos(_vertices[back].pos);
+		double x = (_vertices[front].tex[0] + _vertices[back].tex[0]) / 2;
+		double y = (_vertices[front].tex[1] + _vertices[back].tex[1]) / 2;
 		
 		vec3_add_to_vec3(&v1, v2);
 		vec3_mult(&v1, 0.5);
 		
 		Vertex v = _vertices[front]; 
 		pos_from_vec(v.pos, v1);
+		v.tex[0] = x;
+		v.tex[1] = y;
 		
 		_vertices.push_back(v);
 		newVs[front][back] = _vertices.size() - 1;
@@ -1555,6 +1803,8 @@ void SlipObject::triangulate()
 	}
 	
 	calculateNormals();
+	
+	unlockMutex();
 }
 
 void SlipObject::changeToLines()
@@ -1593,9 +1843,14 @@ void SlipObject::changeToTriangles()
 
 }
 
-Mesh *SlipObject::makeMesh()
+void SlipObject::setCustomMesh(Mesh *m)
 {
-	_mesh = new Mesh(this);
+	_mesh = m;
+}
+
+Mesh *SlipObject::makeMesh(int tri)
+{
+	_mesh = new Mesh(this, tri);
 	return _mesh;
 }
 
@@ -1715,4 +1970,108 @@ void SlipObject::setPosition(vec3 pos)
 	lockMutex();
 	addToVertices(diff);
 	unlockMutex();
+	
+	if (hasMesh())
+	{
+		mesh()->setPosition(pos);
+	}
+	
+	positionChanged();
+}
+
+void SlipObject::rotateByMatrix(mat3x3 m)
+{
+	for (size_t i = 0; i < _vertices.size(); i++)
+	{
+		vec3 v = vec_from_pos(_vertices[i].pos);
+		vec3 n = vec_from_pos(_vertices[i].normal);
+		mat3x3_mult_vec(m, &v);
+		mat3x3_mult_vec(m, &n);
+		pos_from_vec(_vertices[i].pos, v);
+		pos_from_vec(_vertices[i].normal, n);
+	}
+}
+
+void SlipObject::rotate(mat3x3 &rot)
+{
+	vec3 c = centroid();
+
+	for (size_t i = 0; i < _vertices.size(); i++)
+	{
+		vec3 v = vec_from_pos(_vertices[i].pos);
+		vec3 n = vec_from_pos(_vertices[i].normal);
+		vec3_subtract_from_vec3(&v, c);
+		mat3x3_mult_vec(rot, &v);
+		mat3x3_mult_vec(rot, &n);
+		vec3_add_to_vec3(&v, c);
+		pos_from_vec(_vertices[i].pos, v);
+		pos_from_vec(_vertices[i].normal, n);
+
+		if (isSelectable())
+		{
+			memcpy(&_unselectedVertices[i].pos, &_vertices[i].pos,
+			       sizeof(GLfloat) * 3);
+		}
+	}
+}
+
+vec3 SlipObject::findClosestVecToSurface(vec3 &interior)
+{
+	if (hasMesh())
+	{
+		return mesh()->findClosestVecToSurface(interior);
+	}
+
+	double distance = FLT_MAX;
+	vec3 closest = make_vec3(FLT_MAX, FLT_MAX, FLT_MAX);
+
+	for (size_t i = 0; i < indexCount(); i += 3)
+	{
+		vec3 close = closestRayTraceToPlane(interior, iPointer() + i);
+		
+		bool included = polygonIncludes(close, iPointer() + i);
+		
+		if (!included)
+		{
+			continue;
+		}
+
+		vec3_subtract_from_vec3(&close, interior);
+
+		double l = vec3_length(close);
+		
+		if (l >= distance || l != l)
+		{
+			continue;
+		}
+		
+		closest = close;
+		distance = l;
+	}
+
+	vec3_mult(&closest, -1);
+	return closest;
+}
+
+void SlipObject::prepareNormalVision()
+{
+	if (_normals != NULL)
+	{
+		delete _normals;
+		_normals = NULL;
+	}
+
+	_normals = new SlipObject();
+	_normals->_renderType = GL_LINES;
+	
+	for (size_t i = 0; i < _vertices.size(); i++)
+	{
+		vec3 v = vec_from_pos(_vertices[i].pos);
+		vec3 n = vec_from_pos(_vertices[i].normal);
+		_normals->addVertex(v.x, v.y, v.z);
+		_normals->addIndex(-1);
+		vec3_add_to_vec3(&v, n);
+		_normals->addVertex(v.x, v.y, v.z);
+		_normals->addIndex(-1);
+	}
 }

@@ -43,6 +43,7 @@ helen3d = library('helen3d', moc_files,
 'h3dsrc/lbfgs.c',
 'h3dsrc/Mesh.cpp',
 'h3dsrc/Plot3D.cpp',
+'h3dsrc/Quad.cpp',
 'h3dsrc/shader.cpp',
 'h3dsrc/SlipGL.cpp',
 'h3dsrc/SlipObject.cpp',
@@ -64,6 +65,7 @@ install_headers([
 'h3dsrc/Pic2Header.h',
 'h3dsrc/Picture.h',
 'h3dsrc/Plot3D.h',
+'h3dsrc/Quad.h',
 'h3dsrc/SlipGL.h',
 'h3dsrc/SlipObjFile.h',
 'h3dsrc/SlipObject.h',
@@ -75,6 +77,7 @@ install_headers([
 install_headers([
 'h3dsrc/shaders/vStructure.h',
 'h3dsrc/shaders/fStructure.h',
+'h3dsrc/shaders/shShadow.h',
 ],
  subdir : 'h3dsrc/shaders')
 

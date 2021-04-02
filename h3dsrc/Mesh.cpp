@@ -24,18 +24,29 @@ using namespace Helen3D;
 
 double Mesh::_speed = 0.2;
 
-Mesh::Mesh(SlipObject *other) : Icosahedron()
+Mesh::Mesh(SlipObject *other, int triangulations) : Icosahedron()
 {
+	_wrapCycles = 100;
+	_smoothCycles = 15;
 	double rad = other->envelopeRadius();
 	fixCentroid(other->centroid());
 	resize(rad * 1.2);
 	recolour(1, 1, 1);
-	triangulate();
-	triangulate();
-	triangulate();
+	
+	for (size_t i = 0; i < triangulations; i++)
+	{
+		triangulate();
+	}
+
 	changeToLines();
 	_parent = other;
 	setName("Mesh");
+}
+
+vec3 Mesh::getTargetPos(vec3 meshPos, vec3 meshDir, bool *behind)
+{
+	vec3 nearest = _parent->nearestVertexNearNormal(meshPos, meshDir, behind);
+	return nearest;
 }
 
 void Mesh::hug(std::vector<Vertex> &vcopy)
@@ -45,8 +56,7 @@ void Mesh::hug(std::vector<Vertex> &vcopy)
 		bool isBehind = false;
 		vec3 vtx = vec_from_pos(vcopy[i].pos);
 		vec3 norm = vec_from_pos(vcopy[i].normal);
-		vec3 nearest = _parent->nearestVertexNearNormal(vtx, norm, 
-		                                                &isBehind);
+		vec3 nearest = getTargetPos(vtx, norm, &isBehind);
 		vec3 diff = vec3_subtract_vec3(nearest, vtx);
 		if (!isBehind)
 		{
@@ -121,7 +131,7 @@ void Mesh::shrinkWrap()
 {
 	std::vector<Vertex> vcopy = _vertices;
 
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < _wrapCycles; i++)
 	{
 		hug(vcopy);
 		smoothen(vcopy);
@@ -139,7 +149,7 @@ void Mesh::smoothCycles()
 {
 	std::vector<Vertex> vcopy = _vertices;
 
-	for (int i = 0; i < 15; i++)
+	for (int i = 0; i < _smoothCycles; i++)
 	{
 		double ave = averageRadius();
 		smoothen(vcopy);

@@ -26,8 +26,8 @@
 #include "Pic2Header.h"
 #include "Frameworks.h"
 #include <mutex>
-#include "vec3.h"
-#include "mat4x4.h"
+#include <hcsrc/vec3.h>
+#include <hcsrc/mat4x4.h>
 
 inline vec3 vec_from_pos(GLfloat *pos)
 {
@@ -52,9 +52,20 @@ class SlipObject : public QOpenGLExtraFunctions
 public:
 	SlipObject();
 	virtual ~SlipObject();
-	void initialisePrograms(std::string *v = NULL, std::string *f = NULL,
-	                        std::string *g = NULL);
+	virtual void initialisePrograms(std::string *v = NULL, 
+	                                std::string *f = NULL,
+	                                std::string *g = NULL);
 	virtual void render(SlipGL *sender);
+	
+	void managesTextures(bool val)
+	{
+		_texternal = val;
+	}
+	
+	GLuint renderType()
+	{
+		return _renderType;
+	}
 	
 	Helen3D::Vertex *vPointer()
 	{
@@ -110,6 +121,11 @@ public:
 		return _indices.size();
 	}
 	
+	GLuint index(int i)
+	{
+		return _indices[i];
+	}
+	
 	std::string name()
 	{
 		return _name;
@@ -159,7 +175,9 @@ public:
 	
 	void addToVertices(vec3 add);
 	
-	bool collapseCommonVertices(bool quick = false);
+	void rotateByMatrix(mat3x3 m);
+	virtual void rotate(mat3x3 &rot);
+	bool collapseCommonVertices(int quick = -1, double thresh = 1e-6);
 	void removeUnusedVertices();
 	void recolourBoth(double red, double green, double blue);
 	void recolour(double red, double green, double blue,
@@ -180,10 +198,12 @@ public:
 	void boundaries(vec3 *min, vec3 *max);
 	bool intersects(double x, double y, double *z, int *vidx = NULL);
 	bool intersectsPolygon(double x, double y, double *z);
+	double intersects(vec3 pos, vec3 dir);
 	void writeObjFile(std::string filename);
 	double envelopeRadius();
 	double averageRadius();
-	Mesh *makeMesh();
+	Mesh *makeMesh(int tri = 3);
+	void setCustomMesh(Mesh *m);
 	
 	bool hasMesh()
 	{
@@ -198,6 +218,7 @@ public:
 	void clearMesh();
 	
 	bool pointInside(vec3 point);
+	vec3 findClosestVecToSurface(vec3 &interior);
 	void colourOutlayBlack();
 	void changeToLines();
 	void changeToTriangles();
@@ -209,9 +230,19 @@ public:
 		_remove = true;
 	}
 	
+	GLuint getProgram()
+	{
+		return _program;
+	}
+	
 	bool shouldRemove()
 	{
 		return _remove;
+	}
+	
+	void setFragmentShader(std::string shader)
+	{
+		_fString = shader;
 	}
 
 	void setShadersLike(SlipObject *o)
@@ -238,22 +269,35 @@ public:
 	void changeVertexShader(std::string v);
 	void changeFragmentShader(std::string f);
 	virtual void calculateNormals(bool flip = false);
+	virtual void flip();
 	void setSelectable(bool selectable);
-protected:
+	void addToVertexArray(vec3 add, std::vector<Helen3D::Vertex> *vs);
+	
+	static void changeSelectionResize(double resize)
+	{
+		_selectionResize = resize;
+	}
+
 	bool polygonIncludes(vec3 point, GLuint *trio);
-	bool polygonIncludes(vec3 point, vec3 *vs);
+	vec3 closestRayTraceToPlane(vec3 point, GLuint *trio);
+	void addVertex(vec3 v, std::vector<Helen3D::Vertex> *vec = NULL);
+	void addIndex(GLint i);
+	void addIndices(GLuint i1, GLuint i2, GLuint i3);
+	void calculateNormalsAndCheck();
+protected:
+	void rebindToProgram();
+	bool polygonIncludesY(vec3 point, GLuint *trio);
 	vec3 rayTraceToPlane(vec3 point, GLuint *trio, vec3 dir,
 	                     bool *backwards);
 	void addVertex(float v1, float v2, float v3,
 	               std::vector<Helen3D::Vertex> *vec = NULL);
-	void addVertex(vec3 v, std::vector<Helen3D::Vertex> *vec);
-	void addIndex(GLuint i);
-	void addIndices(GLuint i1, GLuint i2, GLuint i3);
-	void calculateNormalsAndCheck();
 	void fixCentroid(vec3 centre);
 	void bindOneTexture(Picture &pic);
+	void bindOneTexture(QImage *image, bool alpha = false);
 	void genTextures();
 	virtual void bindTextures();
+	virtual void positionChanged() {};
+	virtual void resized(double scale) {};
 	
 	virtual void extraUniforms() {};
 
@@ -271,6 +315,21 @@ protected:
 	{
 		_extra = extra;
 	}
+	
+	bool isSelected()
+	{
+		return _selected;
+	}
+	
+	bool isSelectable()
+	{
+		return _selectable;
+	}
+	
+	SlipObject *getNormals()
+	{
+		return _normals;
+	}
 
 	std::vector<Helen3D::Vertex> _vertices;
 	std::vector<GLuint> _indices;
@@ -285,12 +344,15 @@ protected:
 	bool _central;
 	bool _usesFocalDepth;
 	bool _usesLighting;
+	bool _textured;
+	bool _is2D;
 	bool _backToFront;
 	GLuint _renderType;
 	std::string _vString;
 	std::string _fString;
 	std::string _gString;
 	GLuint _program;
+	GLuint _usingProgram;
 	GLint _uLight;
 	GLint _uFocus;
 
@@ -302,30 +364,34 @@ protected:
 	mat4x4 _proj;
 	mat4x4 _unproj;
 	std::vector<GLuint> _textures;
+	bool _handleOwnTextures;
+	void prepareNormalVision();
 private:
-	GLuint addShaderFromString(GLuint program, GLenum type, std::string str);
+	void deleteTextures();
 	void rebindVBOBuffers();
 	void unbindVBOBuffers();
 	void setupVBOBuffers();
 	int vaoForContext();
 	void deletePrograms();
-	void addToVertexArray(vec3 add, std::vector<Helen3D::Vertex> *vs);
+	GLuint addShaderFromString(GLuint program, GLenum type, std::string str);
 
 	static bool index_behind_index(IndexTrio one, IndexTrio two);
 	static bool index_in_front_of_index(IndexTrio one, IndexTrio two);
 
 	std::string _random;
-	GLuint _bufferID;
-	GLuint _bElement;
-	std::map<QOpenGLContext *, GLuint> _vaoMap;
+	std::map<GLuint, GLuint> _bVertices;
+	std::map<GLuint, GLuint> _bElements;
+	std::map<QOpenGLContext *, std::map<GLuint, GLuint>> _vaoMap;
 	GLuint _uModel;
 	GLuint _uProj;
 	GLuint _uTime;
 	std::vector<IndexTrio> _temp; // stores with model mat
 	std::string _name;
 	Mesh *_mesh;
+	SlipObject *_normals;
 	std::mutex _mut;
 	
+	mat4x4 _glLightMat;
 	mat4x4 _glProj;
 	mat4x4 _glModel;
 
@@ -335,7 +401,11 @@ private:
 	bool _selected;
 	bool _highlighted;
 	bool _selectable;
+	bool _texternal;
 	vec3 _focus;
+	
+	SlipGL *_gl;
+	static double _selectionResize;
 };
 
 #endif

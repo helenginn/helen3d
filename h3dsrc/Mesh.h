@@ -28,7 +28,7 @@ class Mesh : public QObject, public Icosahedron
 {
 Q_OBJECT
 public:
-	Mesh(SlipObject *other);
+	Mesh(SlipObject *other, int triangulations = 3);
 
 signals:
 	void resultReady();
@@ -37,9 +37,14 @@ public slots:
 	void smoothCycles();
 	void inflateCycles();
 
+protected:
+	int _wrapCycles;
+	int _smoothCycles;
 private:
 	void smoothen(std::vector<Helen3D::Vertex> &vcopy);
 	void hug(std::vector<Helen3D::Vertex> &vcopy);
+	
+	virtual vec3 getTargetPos(vec3 meshPos, vec3 meshDir, bool *behind);
 
 	SlipObject *_parent;
 

@@ -34,6 +34,7 @@ inline std::string Structure_vsh()
 	"    vPos = projection * pos;\n"\
 	"    gl_Position = vPos;\n"\
 	"	 vColor = vec4(red, green, blue, color[3]);\n"\
+	"    vTex = tex;\n"\
 	"}";
 	return str;
 }

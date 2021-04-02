@@ -7,7 +7,6 @@ inline std::string Structure_fsh()
 	"varying vec4 vColor;\n"\
 	"varying vec2 vTex;\n"\
 	"varying vec4 vPos;\n"\
-	"varying float vTime;\n"\
 	"\n"\
 	"uniform sampler2D pic_tex;\n"\
 	"\n"\
@@ -21,5 +20,26 @@ inline std::string Structure_fsh()
 	return str;
 }
 
+inline std::string tStructure_fsh() 
+{
+	std::string str = 
+	"varying vec4 vColor;\n"\
+	"varying vec2 vTex;\n"\
+	"varying vec4 vPos;\n"\
+	"\n"\
+	"uniform vec3 light;\n"\
+	"\n"\
+	"uniform sampler2D pic_tex;\n"\
+	"\n"\
+	"void main()\n"\
+	"{\n"\
+	"   vec4 color = texture2D(pic_tex, vTex);\n"\
+	"	gl_FragColor = color * vColor;\n"\
+	"\n"\
+	"\n"\
+	"\n"\
+	"}\n";
+	return str;
+}
 
 #endif

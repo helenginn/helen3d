@@ -37,6 +37,17 @@ Text::Text() : SlipObject()
 	_colour = Qt::black;
 	_pos = empty_vec3();
 	_offset = empty_vec3();
+	_image = NULL;
+}
+
+Text::~Text()
+{
+	if (_image != NULL)
+	{
+		delete _image;
+	}
+	
+	_image = NULL;
 }
 
 void Text::prepare()
@@ -78,17 +89,6 @@ void Text::prepare()
 
 void Text::bindTextures()
 {
-	genTextures();
-
-	glBindTexture(GL_TEXTURE_2D, _textures[0]);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, _width, _height,
-	             0, GL_RGB, GL_UNSIGNED_BYTE, _image->constBits());
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-	checkErrors("binding text-ure");
+	bindOneTexture(_image);
 }
 

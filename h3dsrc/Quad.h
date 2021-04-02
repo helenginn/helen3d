@@ -1,4 +1,4 @@
-// abmap
+// helen3d
 // Copyright (C) 2019 Helen Ginn
 // 
 // This program is free software: you can redistribute it and/or modify
@@ -16,28 +16,67 @@
 // 
 // Please email: vagabond @ hginn.co.uk for more details.
 
-#ifndef __abmap__SlipObjFile__
-#define __abmap__SlipObjFile__
+#ifndef __Quad__Quad__
+#define __Quad__Quad__
 
 #include "SlipObject.h"
-#include "vec3.h"
-#include <h3dsrc/Frameworks.h>
 
-
-class SlipObjFile : virtual public SlipObject
+class Quad : public SlipObject
 {
 public:
-	SlipObjFile(std::string filename, bool unique = false);
+	Quad();
+	
+	void setMode(int mode)
+	{
+		_mode = mode;
+	}
+	
+	void setHorizontal(int mode)
+	{
+		_mode = mode;
+	}
+	
+	void clearThreshold()
+	{
+		_threshold = 0;
+	}
+	
+	void addToThreshold(float val = 1)
+	{
+		_threshold += val;
+	}
+	
+	void setOther(float other)
+	{
+		_other = other;
+	}
 
-	void writeBob(std::string filename);
-	void readBob(std::string filename);
+	void setThreshold(float thresh)
+	{
+		_threshold = thresh;
+	}
+
+	void prepareTextures(SlipGL *sender);
+	
+	void setTexture(int i, GLuint val)
+	{
+		_textures[i] = val;
+	}
+
+	virtual void render(SlipGL *sender);
+protected:
+	virtual void extraUniforms();
+	virtual void bindTextures();
+
 private:
-	Helen3D::Vertex *addUniqueVertex(std::vector<vec3> &vs, int index);
-	void copyUniqueVertex(Helen3D::Vertex *v);
-	void readInput();
-	std::string _filename;
+	void prepareNormalDist();
+	void makeQuad();
 
-	bool _unique;
+	GLint _mode;
+	GLfloat _threshold;
+	GLfloat _other;
+	GLfloat _dist[20];
+	int _count;
 };
 
 #endif
