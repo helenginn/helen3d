@@ -507,7 +507,7 @@ void SlipGL::paintGL()
 	{
 //		glViewport(0, 0, _wO, _hO);
 
-		if (_pingPongFbo > 0)
+		if (_pingPongFbo[0] > 0)
 		{
 			specialQuadRender();
 		}
