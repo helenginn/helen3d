@@ -28,7 +28,7 @@ public:
 
 	virtual void triangulate();
 protected:
-	virtual void calculateNormals();
+	virtual void calculateNormals(bool flip = false);
 	virtual void removeUselessVertices(bool flaps = false);
 private:
 	void makeIco();

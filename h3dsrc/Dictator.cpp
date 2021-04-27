@@ -21,6 +21,8 @@
 #include <QThread>
 #include <QApplication>
 
+std::map<std::string, std::string> Dictator::_properties;
+
 void splitCommand(std::string command, std::string *first, std::string *last)
 {
 	size_t equal = command.find('=');
@@ -45,7 +47,7 @@ void splitCommand(std::string command, std::string *first, std::string *last)
 Dictator::Dictator()
 {
 	_w = 0;
-	_currentJob = 0;
+	_currentJob = -1;
 }
 
 void Dictator::jobDone()
@@ -73,6 +75,7 @@ void Dictator::incrementJob()
 {
 	if (_args.size() == 0)
 	{
+		help();
 		return;
 	}
 
@@ -80,19 +83,21 @@ void Dictator::incrementJob()
 	
 	while (result)
 	{
-		result = processNextArg(_args[_currentJob]);
 		_currentJob++;
 		
 		if ((size_t)_currentJob >= _args.size())
 		{
+			finished();
 			break;
 		}
+
+		result = processNextArg(_args[_currentJob]);
 	}
 }
 
 void Dictator::run()
 {
 	setup();
-	_currentJob = 0;
+	_currentJob = -1;
 	incrementJob();
 }

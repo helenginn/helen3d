@@ -4,15 +4,18 @@
 inline std::string Structure_fsh() 
 {
 	std::string str = 
-	"varying vec4 vColor;\n"\
-	"varying vec2 vTex;\n"\
-	"varying vec4 vPos;\n"\
+	"#version 330 core\n"\
+	"in vec4 vColor;\n"\
+	"in vec2 vTex;\n"\
+	"in vec4 vPos;\n"\
 	"\n"\
 	"uniform sampler2D pic_tex;\n"\
 	"\n"\
+	"out vec4 fragColor;\n"\
+	"\n"\
 	"void main()\n"\
 	"{\n"\
-	"	gl_FragColor = vColor;\n"\
+	"	fragColor = vColor;\n"\
 	"\n"\
 	"\n"\
 	"\n"\
@@ -23,9 +26,9 @@ inline std::string Structure_fsh()
 inline std::string tStructure_fsh() 
 {
 	std::string str = 
-	"varying vec4 vColor;\n"\
-	"varying vec2 vTex;\n"\
-	"varying vec4 vPos;\n"\
+	"out vec4 vColor;\n"\
+	"out vec2 vTex;\n"\
+	"out vec4 vPos;\n"\
 	"\n"\
 	"uniform vec3 light;\n"\
 	"\n"\

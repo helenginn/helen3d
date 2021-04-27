@@ -11,7 +11,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include "vec3.h"
+#include <hcsrc/vec3.h>
 
 #define MAX_LIGHTS 20
 #define START_Z 0

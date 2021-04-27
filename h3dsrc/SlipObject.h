@@ -98,6 +98,7 @@ public:
 		_indices.clear();
 	}
 	
+	SlipObject(const SlipObject &other);
 	
 	void copyFrom(SlipObject *s);
 

@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <QObject>
+#include <map>
 
 class Dictator : public QObject
 {
@@ -33,6 +34,11 @@ public:
 		_args = args;
 	}
 	
+	static std::string valueForKey(std::string key)
+	{
+		return _properties[key];
+	}
+
 public slots:
 	void run();
 	void jobDone();
@@ -40,7 +46,10 @@ public slots:
 protected:
 	virtual bool processRequest(std::string first, std::string last) = 0;
 	virtual void setup() {};
+	virtual void help() = 0;
+	virtual void finished() {};
 
+	static std::map<std::string, std::string> _properties;
 private:
 	bool processNextArg(std::string arg);
 

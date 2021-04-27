@@ -37,6 +37,50 @@ using namespace Helen3D;
 
 double SlipObject::_selectionResize = 1.3;
 
+SlipObject::SlipObject(const SlipObject &other)
+{
+	_vertices = other._vertices;
+	_indices = other._indices;
+	_unselectedVertices = other._unselectedVertices;
+	_meshDot = other._meshDot;
+	_red = other._red;
+	_green = other._green;
+	_blue = other._blue;
+	_central = other._central;
+	_usesFocalDepth = other._usesFocalDepth;
+	_usesLighting = other._usesLighting;
+	_textured = other._textured;
+	_is2D = other._is2D;
+	_backToFront = other._backToFront;
+	_renderType = other._renderType;
+	_vString = other._vString;
+	_fString = other._fString;
+	_program = 0;
+	_usingProgram = 0;
+	_model = other._model;
+	_proj = other._proj;
+	_unproj = other._unproj;
+	_textures = other._textures;
+	_handleOwnTextures = other._handleOwnTextures;
+	_random = other._random;
+	_uModel = 0;
+	_uProj = 0;
+	_uTime = 0;
+	_name = other._name;
+	_mesh = NULL;
+	_normals = NULL;
+
+	_extra = other._extra;
+	_remove = other._remove;
+	_disabled = other._disabled;
+	_selected = other._selected;
+	_highlighted = other._highlighted;
+	_selectable = other._selectable;
+	_texternal = other._texternal;
+	_focus = other._focus;
+	_gl = other._gl;
+}
+
 void SlipObject::addToVertexArray(vec3 add, std::vector<Vertex> *vs)
 {
 	for (size_t i = 0; i < vs->size(); i++)
@@ -100,7 +144,6 @@ SlipObject::~SlipObject()
 	deletePrograms();
 	deleteVBOBuffers();
 	deleteTextures();
-	
 	
 	_vString = "";
 	_fString = "";
@@ -261,7 +304,7 @@ void SlipObject::initialisePrograms(std::string *v, std::string *f,
 	{
 		std::cout << "sceneInit(): Program linking failed." << std::endl;
 
-		GLint length;
+		GLint length = 1000;
 		char *log = (char *)malloc(length);
 		/* get the shader info log */
 		glGetProgramInfoLog(_program, GL_INFO_LOG_LENGTH, &length, log);
@@ -409,6 +452,7 @@ void SlipObject::setupVBOBuffers()
 {
 	int vao = vaoForContext();
 	glBindVertexArray(vao);
+	checkErrors("binding vertex array for setup");
 
 	GLuint bv = 0;
 	glGenBuffers(1, &bv);
@@ -471,11 +515,7 @@ void SlipObject::setupVBOBuffers()
 
 	glBindVertexArray(0);
 
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
-	glDisableVertexAttribArray(3);
-	glDisableVertexAttribArray(4);
+	checkErrors("unbinding vertex attribute arrays");
 }
 
 bool SlipObject::checkErrors(std::string what)

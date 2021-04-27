@@ -20,7 +20,7 @@
 #define __abmap__SlipObjFile__
 
 #include "SlipObject.h"
-#include "vec3.h"
+#include <hcsrc/vec3.h>
 #include <h3dsrc/Frameworks.h>
 
 

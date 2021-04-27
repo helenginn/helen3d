@@ -233,7 +233,7 @@ void Icosahedron::removeUselessVertices(bool flaps)
 	}
 }
 
-void Icosahedron::calculateNormals()
+void Icosahedron::calculateNormals(bool)
 {
 	vec3 centre = centroid();
 	

@@ -42,17 +42,14 @@ void SlipGL::initializeGL()
 	
 	checkErrors("before initializeGL");
 
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClearColor(_r, _g, _b, _a);
 	checkErrors("clear color");
 	glEnable(GL_DEPTH_TEST);
 	checkErrors("depth test");
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	checkErrors("clear buffer bits");
 
 	glEnable(GL_BLEND);
 	checkErrors("blend");
-	glEnable(GL_POINT_SPRITE);
-	checkErrors("point sprite");
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	checkErrors("point size");
 
@@ -243,7 +240,7 @@ void SlipGL::initialisePrograms()
 {
 	for (unsigned int i = 0; i < _objects.size(); i++)
 	{
-		_objects[i]->initialisePrograms();
+//		_objects[i]->initialisePrograms();
 	}
 }
 
