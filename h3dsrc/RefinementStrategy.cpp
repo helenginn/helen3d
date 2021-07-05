@@ -249,6 +249,7 @@ void RefinementStrategy::finish()
 			endScore << ") ";
 			_timer.quickReport();
 			std::cout << std::endl;
+			std::cout << std::endl;
 		}
 
 		_changed = 1;
