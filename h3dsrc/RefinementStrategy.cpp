@@ -222,7 +222,8 @@ void RefinementStrategy::finish()
 		_improvement = -reduction * 100;
 
 		if (!_silent)
-		{std::cout << "Reduction ";
+		{
+			std::cout << "Reduction ";
 			double rad2degscale = (_toDegrees ? (180 / M_PI) : 1);
 
 			if (reduction == reduction)
