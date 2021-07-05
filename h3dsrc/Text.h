@@ -31,6 +31,8 @@ public:
 	
 	virtual ~Text();
 	
+	void setColour(float r, float g, float b, float a);
+	
 	void setModelPos(vec3 v)
 	{
 		_pos = v;
@@ -42,8 +44,8 @@ public:
 	}
 	
 	void setProperties(vec3 v, std::string text, size_t size = 24,
-	                   QColor colour = Qt::black, int offx = 0, 
-	                   int offy = 0, int offz = 0)
+	                   QColor colour = Qt::black, float offx = 0, 
+	                   float offy = 0, float offz = 0)
 	{
 		_pos = v;
 		_text = text;

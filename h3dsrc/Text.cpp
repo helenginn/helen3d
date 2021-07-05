@@ -52,15 +52,18 @@ Text::~Text()
 
 void Text::prepare()
 {
+	_vertices.clear();
+	_indices.clear();
+
 	if (_text.length() == 0)
 	{
 		return;
 	}
 	
-	const float scale = 0.01;
+	const float scale = 0.0005;
 
 	QString str = QString::fromStdString(" " + _text);
-	QFont font("Sans Serif", _size);
+	QFont font("Sans Serif", _size * 8);
 	QFontMetrics fm(font);
 	float drawHeight = fm.height();
 	float width = fm.width(str);
@@ -92,3 +95,9 @@ void Text::bindTextures()
 	bindOneTexture(_image);
 }
 
+void Text::setColour(float r, float g, float b, float a)
+{
+	{
+		_colour = QColor(r * 255, g * 255, b * 255, a * 255);
+	}
+}
