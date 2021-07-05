@@ -34,6 +34,11 @@ public:
 		_args = args;
 	}
 	
+	void addArg(std::string arg)
+	{
+		_args.push_back(arg);
+	}
+	
 	static std::string valueForKey(std::string key)
 	{
 		return _properties[key];
