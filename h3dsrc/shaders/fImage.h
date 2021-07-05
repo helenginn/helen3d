@@ -10,13 +10,13 @@ inline std::string Pencil_fsh()
 	"in vec4 vPos;\n"\
 	"in float vTime;\n"\
 	"\n"\
-	"out vec4 gl_FragColor;\n"\
+	"out vec4 fragColor;\n"\
 	"\n"\
 	"uniform sampler2D pic_tex;\n"\
 	"\n"\
 	"void main()\n"\
 	"{\n"\
-	"	gl_FragColor = vColor;\n"\
+	"	fragColor = vColor;\n"\
 	"\n"\
 	"\n"\
 	"\n"\
