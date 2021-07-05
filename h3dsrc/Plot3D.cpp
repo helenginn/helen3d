@@ -25,6 +25,11 @@ using namespace Helen3D;
 #include "shaders/Blob_fsh.h"
 #include "shaders/Blob_vsh.h"
 
+float Plot3D::_textSize = 8;
+float Plot3D::_size = 20;
+bool Plot3D::_drawText = false;
+bool Plot3D::_depth = false;
+
 Plot3D::Plot3D() : SlipObject()
 {
 	_keeper = NULL;
@@ -36,7 +41,17 @@ Plot3D::Plot3D() : SlipObject()
 	_vString = Blob_vsh();
 }
 
-void Plot3D::addPoint(vec3 point)
+void Plot3D::render(SlipGL *gl)
+{
+	for (size_t i = 0; i < _texts.size() && _drawText; i++)
+	{
+		_texts[i]->render(gl);
+	}
+
+	SlipObject::render(gl);
+}
+
+void Plot3D::addPoint(vec3 point, std::string text)
 {
 	_indices.push_back(_vertices.size());
 
@@ -50,6 +65,25 @@ void Plot3D::addPoint(vec3 point)
 	v.pos[2] = point.z;
 
 	_vertices.push_back(v);
+	
+	addText(text, point);
+}
+
+void Plot3D::addText(std::string str, vec3 point)
+{
+	if (!_drawText)
+	{
+		return;
+	}
+
+	Text *text = new Text();
+
+	if (str.length())
+	{
+		text->setProperties(point, str, _textSize, Qt::black, 0, 0.08, 0.0);
+		text->prepare();
+	}
+	_texts.push_back(text);
 }
 
 void Plot3D::selectInWindow(float x1, float y1, float x2, float y2,
@@ -63,11 +97,19 @@ void Plot3D::repopulate()
 {
 	_vertices.clear();
 	_indices.clear();
+	for (size_t i = 0; i < _texts.size(); i++)
+	{
+		delete _texts[i];
+	}
+	_texts.clear();
 
 	populate();
 
 	recolour();
-	_keeper->update();
+	if (_keeper)
+	{
+		_keeper->update();
+	}
 }
 
 
@@ -76,3 +118,19 @@ void Plot3D::recolour()
 
 }
 
+void Plot3D::extraUniforms()
+{
+	{
+	const char *uniform_name = "size";
+	GLuint u = glGetUniformLocation(_usingProgram, uniform_name);
+	glUniform1f(u, _size);
+	checkErrors("rebinding size");
+	}
+
+	{
+	const char *uniform_name = "depth";
+	GLuint uDepth = glGetUniformLocation(_usingProgram, uniform_name);
+	glUniform1i(uDepth, _depth);
+	checkErrors("rebinding depth");
+	}
+}

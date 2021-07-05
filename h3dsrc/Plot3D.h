@@ -21,7 +21,8 @@
 
 #include "SlipObject.h"
 #include <QObject>
-#include "vec3.h"
+#include <hcsrc/vec3.h>
+#include <h3dsrc/Text.h>
 
 class SlipGL;
 
@@ -30,7 +31,46 @@ class Plot3D : public QObject, public SlipObject
 Q_OBJECT
 public:
 	Plot3D();
+	
+	static bool usesDepth()
+	{
+		return _depth;
+	}
+	
+	static bool showsText()
+	{
+		return _drawText;
+	}
+	
+	static float fontSize()
+	{
+		return _textSize;
+	}
+	
+	static float pointSize()
+	{
+		return _size;
+	}
 
+	static void setDepthCue(bool cue)
+	{
+		_depth = cue;
+	}
+
+	static void setShowText(bool draw)
+	{
+		_drawText = draw;
+	}
+
+	static void setFontSize(float size)
+	{
+		_textSize = size;
+	}
+
+	static void setPointSize(float size)
+	{
+		_size = size;
+	}
 	
 	void setKeeper(SlipGL *gl)
 	{
@@ -44,7 +84,7 @@ public:
 		_c = c;
 	}
 
-	void addPoint(vec3 point);
+	void addPoint(vec3 point, std::string text = "");
 
 	/* add 1 = add to selection
 	 * add 0 = replace selection
@@ -60,8 +100,17 @@ public:
 signals:
 	void updateSelection();
 protected:
+	virtual void extraUniforms();
+	void addText(std::string text, vec3 point);
 	SlipGL *_keeper;
+	
+	virtual void render(SlipGL *gl);
 	virtual void recolour();
+	std::vector<Text *> _texts;
+	static float _size;
+	static float _textSize;
+	static bool _drawText;
+	static bool _depth;
 
 	int _a;
 	int _b;
