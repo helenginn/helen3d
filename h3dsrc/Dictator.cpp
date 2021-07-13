@@ -46,14 +46,12 @@ void splitCommand(std::string command, std::string *first, std::string *last)
 
 Dictator::Dictator()
 {
-	_w = 0;
+	_w = NULL;
 	_currentJob = -1;
 }
 
 void Dictator::jobDone()
 {
-	disconnect(_w, SIGNAL(finished()), this, SLOT(jobDone()));
-	disconnect(this, SIGNAL(refine()), nullptr, nullptr);
 	std::cout << "Done long job." << std::endl;
 	incrementJob();
 }
@@ -69,6 +67,29 @@ bool Dictator::processNextArg(std::string arg)
 	bool should_continue = processRequest(first, last);
 	
 	return should_continue;
+}
+
+bool Dictator::prepareWorkForObject(QObject *object)
+{
+	if (object == NULL)
+	{
+		return false;
+	}
+
+	if (_w && _w->isRunning())
+	{
+		std::cout << "Waiting for worker to finish old job" << std::endl;
+		_w->wait();
+	}
+	
+	if (!_w)
+	{
+		_w = new QThread();
+	}
+
+	object->moveToThread(_w);
+
+	return true;
 }
 
 void Dictator::incrementJob()
@@ -100,4 +121,9 @@ void Dictator::run()
 	setup();
 	_currentJob = -1;
 	incrementJob();
+}
+
+void Dictator::startThread()
+{
+	_w->start();
 }

@@ -28,6 +28,10 @@ class Dictator : public QObject
 Q_OBJECT
 public:
 	Dictator();
+
+	bool prepareWorkForObject(QObject *object);
+	
+	void startThread();
 	
 	void setArgs(std::vector<std::string> args)
 	{
@@ -55,12 +59,12 @@ protected:
 	virtual void finished() {};
 
 	static std::map<std::string, std::string> _properties;
+	QThread *_w;
 private:
 	bool processNextArg(std::string arg);
 
 	std::vector<std::string> _args;
 	int _currentJob;
-	QThread *_w;
 };
 
 #endif
