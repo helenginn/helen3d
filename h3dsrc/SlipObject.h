@@ -132,7 +132,7 @@ public:
 		return _name;
 	}
 	
-	void setName(std::string name)
+	virtual void setName(std::string name)
 	{
 		_name = name;
 	}
