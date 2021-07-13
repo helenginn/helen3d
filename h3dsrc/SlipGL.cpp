@@ -55,6 +55,12 @@ void SlipGL::initializeGL()
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	checkErrors("blend func");
+	
+	if (_extraRendering)
+	{
+		prepareRenderToTexture(2);
+		preparePingPongBuffers();
+	}
 
 	initialisePrograms();
 	_setup = true;
@@ -65,7 +71,7 @@ void SlipGL::setBackground(double r, double g, double b, double a)
 	_r = r; _g = g; _b = b; _a = a;
 }
 
-SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
+SlipGL::SlipGL(QWidget *p, bool extraRendering) : QOpenGLWidget(p)
 {
 	_quad = NULL;
 	_shadowing = false;
@@ -80,6 +86,7 @@ SlipGL::SlipGL(QWidget *p) : QOpenGLWidget(p)
 	_sceneDepth = 0;
 	_wO = 0;
 	_hO = 0;
+	_extraRendering = extraRendering;
 
 	_acceptsFocus = true;
 	_shiftPressed = false;
@@ -268,7 +275,6 @@ void SlipGL::preparePingPongBuffers(int w_over, int h_over)
 		glBindTexture(GL_TEXTURE_2D, _pingPongMap[i]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h,
 		             0, GL_RGBA, GL_FLOAT, NULL);
-		std::cout << "Dimensions: " << w << " " << h << std::endl;
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -366,6 +372,7 @@ void SlipGL::prepareRenderToTexture(size_t count)
 	int ratio = QApplication::desktop()->devicePixelRatio();
 	int w = width() * ratio;
 	int h = height() * ratio;
+	glViewport(0, 0, w, h);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, _sceneDepth);
@@ -502,8 +509,6 @@ void SlipGL::paintGL()
 	
 	if (_sceneFbo > 0)
 	{
-//		glViewport(0, 0, _wO, _hO);
-
 		if (_pingPongFbo[0] > 0)
 		{
 			specialQuadRender();
@@ -513,9 +518,6 @@ void SlipGL::paintGL()
 			quad()->setTexture(1, _sceneMap[0]);
 		}
 
-		int ratio = QApplication::desktop()->devicePixelRatio();
-//		glViewport(0, 0, width() * ratio, height() * ratio);
-		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0); 
 		renderQuad();
 	}
@@ -579,6 +581,19 @@ void SlipGL::updateProjection(double side)
 void SlipGL::resizeGL(int w, int h)
 {
 	updateProjection();
+	
+	if (!_extraRendering)
+	{
+		return;
+	}
+	
+	glDeleteFramebuffers(1, &_sceneFbo);
+	glDeleteFramebuffers(2, _pingPongFbo);
+	glDeleteTextures(1, &_sceneDepth);
+	glDeleteTextures(2, _pingPongMap);
+
+	prepareRenderToTexture(2);
+	preparePingPongBuffers();
 }
 
 void SlipGL::setFocalPoint(vec3 pos)
@@ -798,7 +813,7 @@ void SlipGL::renderQuad()
 
 void SlipGL::specialQuadRender()
 {
-	int amount = 2;
+	int amount = 16;
 	int mode = 0;
 	float threshold = 0.3;
 	_quad->setTexture(0, _sceneMap[0]);

@@ -36,7 +36,7 @@ class SlipGL : public QOpenGLWidget, public QOpenGLExtraFunctions
 	Q_OBJECT
 	
 public:
-	SlipGL(QWidget *parent);
+	SlipGL(QWidget *parent, bool extraRendering = false);
 	
 	void preparePanels(int n);
 	void addPanel();
@@ -244,6 +244,7 @@ protected:
 	bool _controlPressed;
 	bool _shiftPressed;
 	bool _acceptsFocus;
+	bool _extraRendering;
 	
 	int _wO, _hO;
 	

@@ -60,6 +60,10 @@ public:
 	
 	void setTexture(int i, GLuint val)
 	{
+		if (_textures.size() <= i)
+		{
+			_textures.resize(i + 1);
+		}
 		_textures[i] = val;
 	}
 

@@ -18,8 +18,8 @@
 
 #include "Quad.h"
 #include "SlipGL.h"
-#include "shaders/vStructure.h"
-#include "shaders/fStructure.h"
+#include "shaders/quad.vsh"
+#include "shaders/quad.fsh"
 #include <iostream>
 
 Quad::Quad() : SlipObject()
@@ -30,8 +30,8 @@ Quad::Quad() : SlipObject()
 	_mode = 0;
 	_threshold = 0;
 	_other = 0;
-	_vString = Structure_vsh();
-	_fString = Structure_fsh();
+	_vString = Quad_vsh();
+	_fString = Quad_fsh();
 	setName("Quad");
 }
 
