@@ -84,7 +84,7 @@ install_headers([
 pkg = import('pkgconfig')
 h = ['helen3d'] # subdirectories of ${prefix}/${includedir} to add to header path
 pkg.generate([helen3d],
-             subdirs : ['helen3d'],
+             subdirs : [''],
              version : '1.0',
              name : 'helen3d',
              filebase : 'helen3d',
