@@ -20,6 +20,7 @@
 #define __Quad__Quad__
 
 #include "SlipObject.h"
+#include <iostream>
 
 class Quad : public SlipObject
 {
