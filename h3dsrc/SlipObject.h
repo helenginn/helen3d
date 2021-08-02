@@ -265,6 +265,17 @@ public:
 		recolour(red, green, blue, &_unselectedVertices);
 	}
 
+	void setExtra(double x, double y, double z, double w)
+	{
+		for (size_t i = 0; i < _vertices.size(); i++)
+		{
+			_vertices[i].extra[0] = x;
+			_vertices[i].extra[1] = y;
+			_vertices[i].extra[2] = z;
+			_vertices[i].extra[3] = w;
+		}
+	}
+
 	void resize(double scale, bool unselected = false);
 	
 	void changeVertexShader(std::string v);
