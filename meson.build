@@ -1,5 +1,11 @@
 project('helen3d', 'cpp', 'c')
 qt5 = import('qt5')
+cxx = meson.get_compiler('cpp')
+arg_list = []
+
+if (host_machine.system() == 'darwin')
+  arg_list += '-mmacosx-version-min=10.14'
+endif
 
 qt5_dep = dependency('qt5', modules: ['Core', 'Gui', 'Widgets', 'Sql'], required : false)
 dep_gl = dependency('gl', required : false)
@@ -49,7 +55,7 @@ helen3d = library('helen3d', moc_files,
 'h3dsrc/SlipObject.cpp',
 'h3dsrc/SlipObjFile.cpp',
 'h3dsrc/Text.cpp',
-cpp_args: ['-std=c++11', '-mmacosx-version-min=10.14'], 
+cpp_args: arg_list,
 install_rpath: '$ORIGIN/.',
 include_directories : helencore_headers,
 dependencies : [ helencore_dep, boost_dep, qt5_dep ], 
