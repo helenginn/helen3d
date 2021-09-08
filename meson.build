@@ -39,7 +39,7 @@ moc_files = qt5.preprocess(moc_headers :
 ],
 			moc_extra_arguments: ['-DMAKES_MY_MOC_HEADER_COMPILE'])
 
-helencore_headers = include_directories('subprojects/helencore')
+helencore_headers = sp_helencore.get_variable('helencore_inc')
 
 helen3d = library('helen3d', moc_files,
 'h3dsrc/CurveView.cpp',
