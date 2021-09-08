@@ -5,7 +5,6 @@
 
 #ifndef FRAMEWORKS_H
 
-#include <QtGui/qopengl.h>
 #include <QtGui/qopenglfunctions.h>
 #include <memory>
 #include <boost/shared_ptr.hpp>

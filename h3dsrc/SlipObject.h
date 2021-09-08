@@ -19,7 +19,6 @@
 #ifndef __Slip_SlipObject__
 #define __Slip_SlipObject__
 
-#include <QtGui/qopengl.h>
 #include <QOpenGLFunctions>
 #include <QOpenGLExtraFunctions>
 
