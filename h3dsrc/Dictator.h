@@ -47,6 +47,11 @@ public:
 	{
 		return _properties[key];
 	}
+	
+	static void setValueForKey(std::string key, std::string value)
+	{
+		_properties[key] = value;
+	}
 
 public slots:
 	void run();
