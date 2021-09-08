@@ -49,9 +49,10 @@ helen3d = library('helen3d', moc_files,
 'h3dsrc/SlipObject.cpp',
 'h3dsrc/SlipObjFile.cpp',
 'h3dsrc/Text.cpp',
-cpp_args: ['-std=c++11'], 
+cpp_args: ['-std=c++11', '-mmacosx-version-min=10.14'], 
 include_directories : helencore_headers,
 dependencies : [ helencore_dep, boost_dep, qt5_dep ], 
+link_args: ['-mmacosx-version-min=10.14'],
 install: true)
 
 install_headers([
