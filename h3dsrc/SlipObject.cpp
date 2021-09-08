@@ -1334,7 +1334,7 @@ bool SlipObject::intersectsPolygon(double x, double y, double *z)
 
 		if (passes)
 		{
-			*z = projs[0].z;
+			*z = (projs[0].z + projs[1].z + projs[2].z) / 3;
 			return true;
 		}
 	}
