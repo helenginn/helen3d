@@ -1314,6 +1314,11 @@ bool SlipObject::intersectsPolygon(double x, double y, double *z)
 
 			vec3_mult(&projs[j], 1 / last);
 			
+			if (model.z > 0 || model.z < *z)
+			{
+				continue;
+			}
+			
 			if (projs[j].x < -1 || projs[j].x > 1)
 			{
 				break;
@@ -1322,11 +1327,6 @@ bool SlipObject::intersectsPolygon(double x, double y, double *z)
 			if (projs[j].y < -1 || projs[j].y > 1)
 			{
 				break;
-			}
-			
-			if (model.z > 0)
-			{
-				return false;
 			}
 		}
 		
