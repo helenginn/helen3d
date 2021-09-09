@@ -60,7 +60,7 @@ cpp_args: arg_list,
 install_rpath: '$ORIGIN/.',
 include_directories : helencore_headers,
 dependencies : [ helencore_dep, boost_dep, qt5_dep ], 
-link_args: ['-mmacosx-version-min=10.14'],
+link_args: arg_list,
 install: true)
 
 install_headers([
