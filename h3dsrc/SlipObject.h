@@ -288,6 +288,11 @@ public:
 	{
 		_selectionResize = resize;
 	}
+	
+	void setNeedsExtra(bool extra)
+	{
+		_extra = extra;
+	}
 
 	bool polygonIncludes(vec3 point, GLuint *trio);
 	vec3 closestRayTraceToPlane(vec3 point, GLuint *trio);
@@ -320,11 +325,6 @@ protected:
 	void setFocus(vec3 focus)
 	{
 		_focus = focus;
-	}
-	
-	void setNeedsExtra(bool extra)
-	{
-		_extra = extra;
 	}
 	
 	bool isSelected()
