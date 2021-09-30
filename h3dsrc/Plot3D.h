@@ -83,6 +83,11 @@ public:
 		_b = b;
 		_c = c;
 	}
+	
+	void setAlwaysMakeText(bool always)
+	{
+		_alwaysMakeText = always;
+	}
 
 	void addPoint(vec3 point, std::string text = "");
 
@@ -111,6 +116,7 @@ protected:
 	static float _textSize;
 	static bool _drawText;
 	static bool _depth;
+	bool _alwaysMakeText;
 
 	int _a;
 	int _b;

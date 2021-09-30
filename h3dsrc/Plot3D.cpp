@@ -32,6 +32,7 @@ bool Plot3D::_depth = false;
 
 Plot3D::Plot3D() : SlipObject()
 {
+	_alwaysMakeText = false;
 	_keeper = NULL;
 	_renderType = GL_POINTS;
 	_a = 0;
@@ -71,7 +72,7 @@ void Plot3D::addPoint(vec3 point, std::string text)
 
 void Plot3D::addText(std::string str, vec3 point)
 {
-	if (!_drawText)
+	if (!_drawText && !_alwaysMakeText)
 	{
 		return;
 	}
