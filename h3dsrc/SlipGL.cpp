@@ -131,6 +131,16 @@ void SlipGL::restartTimer()
 	_paused = false;
 }
 
+void SlipGL::addObjectAtIndex(SlipObject *obj, int index)
+{
+	_objects.insert(_objects.begin() + index, obj);
+	obj->setModel(_model);
+	obj->setProj(_proj);
+	obj->setUnproj(_unproj);
+	obj->reorderIndices();
+
+}
+
 void SlipGL::addObject(SlipObject *obj, bool active)
 {
 	_objects.push_back(obj);

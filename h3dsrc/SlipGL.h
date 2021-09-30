@@ -152,6 +152,7 @@ public:
 	void restartTimer();
 	
 	void addObject(SlipObject *obj, bool active = false);
+	void addObjectAtIndex(SlipObject *obj, int index);
 	virtual void updateProjection(double side = 0.5);
 	void removeObject(SlipObject *obj);
 	
