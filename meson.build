@@ -60,6 +60,7 @@ cpp_args: arg_list,
 install_rpath: '$ORIGIN/.',
 include_directories : helencore_headers,
 dependencies : [ helencore_dep, boost_dep, qt5_dep ], 
+cpp_args: ['-w', '-std=c++11'],
 link_args: arg_list,
 install: true)
 
