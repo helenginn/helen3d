@@ -81,6 +81,7 @@ public:
 		_mock = false;
 		_improvement = 0;
 		_toDegrees = false;
+		_stream = &std::cout;
 	};
 
 	virtual ~RefinementStrategy() {};
