@@ -84,6 +84,13 @@ public:
 		_c = c;
 	}
 	
+	void getAxes(int *a, int *b, int *c)
+	{
+		*a = _a;
+		*b = _b;
+		*c = _c;
+	}
+	
 	void setAlwaysMakeText(bool always)
 	{
 		_alwaysMakeText = always;
