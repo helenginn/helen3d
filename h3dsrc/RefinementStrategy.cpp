@@ -144,14 +144,14 @@ void RefinementStrategy::refine()
 		return;
 	}
 
-	startingScore = (*evaluationFunction)(evaluateObject);
-	_prevScore = startingScore;
-
 	for (size_t i = 0; i < parameterCount(); i++)
 	{
 		double value = getValueForParam(i);
 		_params[i].start_value = value;
 	}
+
+	startingScore = (*evaluationFunction)(evaluateObject);
+	_prevScore = startingScore;
 
 	reportProgress(startingScore);
 }

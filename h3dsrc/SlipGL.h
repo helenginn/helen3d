@@ -68,6 +68,12 @@ public:
 		updateProjection();
 	}
 	
+	void setFrustum(bool f)
+	{
+		_frustum = f;
+		updateProjection();
+	}
+	
 	SlipObject *activeObj()
 	{
 		return _activeObj;
@@ -78,6 +84,11 @@ public:
 		return _time;
 	}
 	
+	void setModel(mat4x4 m)
+	{
+		_model = m;
+	}
+	
 	mat4x4 getModel()
 	{
 		return _model;
@@ -86,6 +97,11 @@ public:
 	vec3 getCentre()
 	{
 		return _centre;
+	}
+	
+	void setProjection(mat4x4 proj)
+	{
+		_proj = proj;
 	}
 	
 	mat4x4 getProjection()
@@ -109,6 +125,18 @@ public:
 	GLuint depthMap()
 	{
 		return _depthMap;
+	}
+	
+	std::vector<SlipObject *> takeObjects()
+	{
+		std::vector<SlipObject *> tmp = _objects;
+		_objects.clear();
+		return tmp;
+	}
+	
+	void setObjects(std::vector<SlipObject *> tmp)
+	{
+		_objects = tmp;
 	}
 	
 	void clearObjects()
@@ -245,6 +273,7 @@ protected:
 	bool _shiftPressed;
 	bool _acceptsFocus;
 	bool _extraRendering;
+	bool _frustum;
 	
 	int _wO, _hO;
 	

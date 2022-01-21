@@ -73,6 +73,7 @@ void SlipGL::setBackground(double r, double g, double b, double a)
 
 SlipGL::SlipGL(QWidget *p, bool extraRendering) : QOpenGLWidget(p)
 {
+	_frustum = true;
 	_quad = NULL;
 	_shadowing = false;
 	_shadowProgram = 0;
@@ -582,10 +583,20 @@ void SlipGL::updateProjection(double side)
 {
 	float aspect = (float)height() / (float)width();
 	
-	_proj = mat4x4_frustum(-side, side, side * aspect, -side * aspect,
-	                       zNear, zFar);
-	_unproj = mat4x4_unfrustum(-side, side, side * aspect, -side * aspect,
-	                       zNear, zFar);
+	if (_frustum)
+	{
+		_proj = mat4x4_frustum(-side, side, side * aspect, -side * aspect,
+		                       zNear, zFar);
+		_unproj = mat4x4_unfrustum(-side, side, side * aspect, -side * aspect,
+		                           zNear, zFar);
+	}
+	else
+	{
+		_proj = mat4x4_ortho(-side, side, side * aspect, -side * aspect,
+		                     zNear, zFar);
+		_unproj = mat4x4_unortho(-side, side, side * aspect, -side * aspect,
+		                         zNear, zFar);
+	}
 }
 
 void SlipGL::resizeGL(int w, int h)

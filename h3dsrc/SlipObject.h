@@ -55,6 +55,7 @@ public:
 	                                std::string *f = NULL,
 	                                std::string *g = NULL);
 	virtual void render(SlipGL *sender);
+	void heatToVertex(Helen3D::Vertex &v, double heat);
 	
 	void managesTextures(bool val)
 	{
@@ -345,6 +346,8 @@ protected:
 	std::vector<Helen3D::Vertex> _vertices;
 	std::vector<GLuint> _indices;
 	std::vector<Helen3D::Vertex> _unselectedVertices;
+	
+	void appendObject(SlipObject *object);
 
 	double _meshDot;
 
