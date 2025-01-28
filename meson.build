@@ -1,5 +1,5 @@
 project('helen3d', 'cpp', 'c')
-qt5 = import('qt5')
+qt6 = import('qt6')
 cxx = meson.get_compiler('cpp')
 arg_list = []
 
@@ -7,7 +7,7 @@ if (host_machine.system() == 'darwin')
   arg_list += '-mmacosx-version-min=10.14'
 endif
 
-qt5_dep = dependency('qt5', modules: ['Core', 'Gui', 'Widgets', 'Sql'], required : false)
+qt6_dep = dependency('qt6', modules: ['Core', 'Gui', 'Widgets', 'Sql'], required : false)
 dep_gl = dependency('gl', required : false)
 
 boost_dep = dependency('boost')
@@ -27,9 +27,9 @@ run_command('get_hash.sh')
 sp_helencore = subproject('helencore')
 helencore_dep = sp_helencore.get_variable('helencore_subdep')
 
-if qt5_dep.found() and dep_gl.found()
+if qt6_dep.found() and dep_gl.found()
 helen3d_scs = true
-moc_files = qt5.preprocess(moc_headers : 
+moc_files = qt6.preprocess(moc_headers : 
 ['h3dsrc/SlipGL.h',
 'h3dsrc/Mesh.h',
 'h3dsrc/Plot3D.h',
@@ -59,8 +59,8 @@ helen3d = library('helen3d', moc_files,
 cpp_args: arg_list,
 install_rpath: '$ORIGIN/.',
 include_directories : helencore_headers,
-dependencies : [ helencore_dep, boost_dep, qt5_dep ], 
-cpp_args: ['-w', '-std=c++11'],
+dependencies : [ helencore_dep, boost_dep, qt6_dep ], 
+cpp_args: ['-w', '-std=c++20'],
 link_args: arg_list,
 install: true)
 
