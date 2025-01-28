@@ -66,7 +66,7 @@ void Text::prepare()
 	QFont font("Sans Serif", _size * 8);
 	QFontMetrics fm(font);
 	float drawHeight = fm.height();
-	float width = fm.width(str);
+	float width = fm.horizontalAdvance(str);
 	_width = width * 1.2;
 	_height = drawHeight * 1.5;
 

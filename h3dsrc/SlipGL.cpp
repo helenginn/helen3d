@@ -23,7 +23,6 @@
 #include "SlipObject.h"
 #include "shaders/shShadow.h"
 #include <QApplication>
-#include <QDesktopWidget>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QWindow>
@@ -267,7 +266,7 @@ void SlipGL::preparePingPongBuffers(int w_over, int h_over)
 	glGenFramebuffers(2, _pingPongFbo);
 	glGenTextures(2, _pingPongMap);
 
-	int ratio = QApplication::desktop()->devicePixelRatio();
+	int ratio = QGuiApplication::primaryScreen()->devicePixelRatio();
 	int w = width() * ratio;
 	int h = height() * ratio;
 	
@@ -337,7 +336,7 @@ void SlipGL::preparePingPongBuffers(int w_over, int h_over)
 
 void SlipGL::resizeTextures(int w_over, int h_over)
 {
-	int ratio = QApplication::desktop()->devicePixelRatio();
+	int ratio = QGuiApplication::primaryScreen()->devicePixelRatio();
 	int w = width() * ratio;
 	int h = height() * ratio;
 	
@@ -380,7 +379,7 @@ void SlipGL::prepareRenderToTexture(size_t count)
 
 	_sceneMapCount = count;
 
-	int ratio = QApplication::desktop()->devicePixelRatio();
+	int ratio = QGuiApplication::primaryScreen()->devicePixelRatio();
 	int w = width() * ratio;
 	int h = height() * ratio;
 	glViewport(0, 0, w, h);
@@ -467,7 +466,7 @@ void SlipGL::renderShadows()
 	_model = model;
 	_proj = proj;
 
-	int ratio = QApplication::desktop()->devicePixelRatio();
+	int ratio = QGuiApplication::primaryScreen()->devicePixelRatio();
 	glViewport(0, 0, width() * ratio, height() * ratio);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClear(GL_DEPTH_BUFFER_BIT);

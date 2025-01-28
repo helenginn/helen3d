@@ -19,7 +19,7 @@
 #ifndef __Slip__SlipGL__
 #define __Slip__SlipGL__
 
-#include <QtWidgets/qopenglwidget.h>
+#include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QOpenGLExtraFunctions>
 #include <QMouseEvent>

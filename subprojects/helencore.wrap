@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/helenginn/helencore.git
+revision = head
+
+[provide]
+helencore_exposed = helencore_subdep
+#not working

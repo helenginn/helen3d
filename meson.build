@@ -4,10 +4,12 @@ cxx = meson.get_compiler('cpp')
 arg_list = []
 
 if (host_machine.system() == 'darwin')
-  arg_list += '-mmacosx-version-min=10.14'
+  arg_list += '-mmacosx-version-min=10.15'
 endif
 
-qt6_dep = dependency('qt6', modules: ['Core', 'Gui', 'Widgets', 'Sql'], required : false)
+message('Exploring helen3d directory')
+
+qt6_dep = dependency('qt6', modules: ['Core', 'Gui', 'Widgets', 'Sql', 'OpenGLWidgets'], required : false)
 dep_gl = dependency('gl', required : false)
 
 boost_dep = dependency('boost')
@@ -23,9 +25,12 @@ hash_script = find_program('get_hash.sh')
 # This will produce the dependency file.
 run_command('get_hash.sh')
 
+message('Just before helencore')
 # this will obtain the helencore
 sp_helencore = subproject('helencore')
 helencore_dep = sp_helencore.get_variable('helencore_subdep')
+#helencore_dep = dependency(helencore_exposed)
+message('Just after helencore')
 
 if qt6_dep.found() and dep_gl.found()
 helen3d_scs = true
@@ -101,6 +106,7 @@ pkg.generate([helen3d],
              description : 'Library for 3D utilities by Helen')
 
 helen3d_inc = include_directories('h3dsrc')
+message('Declaring helen3d_subdep')
 helen3d_subdep = declare_dependency(link_with: helen3d, 
 include_directories: helen3d_inc)
 
